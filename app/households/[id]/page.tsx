@@ -7,8 +7,56 @@ import {
   CheckCircle, Clock, LucideIcon 
 } from "lucide-react";
 
-// 1. Mock Data (Moved here)
-const householdData = {
+// --- Interfaces for Data Structure ---
+// Adding these fixes the "Property 'status' does not exist" error
+interface Member {
+  name: string;
+  role: string;
+  age: number;
+  sex: string;
+  status?: string; // Optional property
+}
+
+interface HouseholdData {
+  id: string;
+  head: string;
+  age: number;
+  phone: string;
+  location: {
+    village: string;
+    parish: string;
+    gps: string;
+  };
+  vulnerability: {
+    score: string;
+    factors: string[];
+  };
+  members: Member[];
+  health: {
+    maternal: string;
+    immunization: string;
+    chronic: string;
+  };
+  wash: {
+    waterSource: string;
+    distance: string;
+    sanitation: string;
+    handwashing: string;
+  };
+  livelihoods: {
+    incomeSource: string;
+    crops: string[];
+    foodSecurity: string;
+  };
+  history: {
+    date: string;
+    agent: string;
+    action: string;
+  }[];
+}
+
+// 1. Mock Data (Typed)
+const householdData: HouseholdData = {
   id: "HH-8291",
   head: "Achan Grace",
   age: 34,
@@ -23,7 +71,7 @@ const householdData = {
     factors: ["Malnourished Child", "Unsafe Water"]
   },
   members: [
-    { name: "Achan Grace", role: "Head", age: 34, sex: "F" },
+    { name: "Achan Grace", role: "Head", age: 34, sex: "F" }, // status is undefined here, which is now allowed
     { name: "Opio Moses", role: "Child", age: 3, sex: "M", status: "Malnourished" },
     { name: "Akello Rose", role: "Child", age: 1, sex: "F", status: "Healthy" }
   ],
@@ -49,7 +97,7 @@ const householdData = {
   ]
 };
 
-// --- Interfaces ---
+// --- Component Interfaces ---
 
 interface TabButtonProps {
   label: string;
