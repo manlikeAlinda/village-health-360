@@ -1,20 +1,45 @@
+import React from "react";
 import { 
   Users, Droplets, Activity, AlertTriangle, 
-  LucideIcon, CheckCircle, AlertCircle, Wrench, Baby 
+  LucideIcon, CheckCircle, AlertCircle, Wrench, Baby,
+  Download, ChevronRight, MoreHorizontal
 } from "lucide-react";
 import MapWrapper from "./components/dashboard/MapWrapper";
 
-// --- Mock Data: Realistic Field Stream ---
-const recentActivities = [
+// --- Types & Interfaces ---
+// structured for scalability and strict typing
+type ActivityType = "Critical Alert" | "Maternal Health" | "WASH Maintenance" | "Routine Data";
+
+interface ActivityItem {
+  id: number;
+  type: ActivityType;
+  message: string;
+  location: string;
+  agent: string;
+  timestamp: string;
+  isUrgent?: boolean;
+}
+
+interface StatsCardProps {
+  label: string;
+  value: string;
+  trend?: string;
+  trendDirection?: 'up' | 'down' | 'neutral';
+  subtext?: string;
+  icon: LucideIcon;
+  intent: 'brand' | 'warning' | 'danger' | 'success'; // Semantic intent
+}
+
+// --- Mock Data: Refined for Realism ---
+const recentActivities: ActivityItem[] = [
   {
     id: 1,
     type: "Critical Alert",
     message: "Cholera symptoms reported in 3 households",
     location: "Koro Village, Omoro",
     agent: "Agent Moses",
-    time: "12 mins ago",
-    icon: AlertCircle,
-    color: "bg-red-100 text-red-600"
+    timestamp: "12 mins ago",
+    isUrgent: true,
   },
   {
     id: 2,
@@ -22,9 +47,7 @@ const recentActivities = [
     message: "New high-risk pregnancy registered (Trimester 3)",
     location: "Bwobo Parish",
     agent: "Agent Sarah",
-    time: "45 mins ago",
-    icon: Baby,
-    color: "bg-purple-100 text-purple-600"
+    timestamp: "45 mins ago",
   },
   {
     id: 3,
@@ -32,9 +55,7 @@ const recentActivities = [
     message: "Borehole WP-09 flagged: Pump handle broken",
     location: "Ajulu Center",
     agent: "John O. (Technician)",
-    time: "2 hours ago",
-    icon: Wrench,
-    color: "bg-orange-100 text-orange-600"
+    timestamp: "2 hours ago",
   },
   {
     id: 4,
@@ -42,132 +63,233 @@ const recentActivities = [
     message: "Daily Census: 15 Households verified",
     location: "Patiko Sub-county",
     agent: "Agent Grace",
-    time: "3 hours ago",
-    icon: CheckCircle,
-    color: "bg-blue-100 text-brand-blue"
+    timestamp: "3 hours ago",
   }
 ];
 
-// --- Interfaces ---
-interface StatsCardProps {
-  title: string;
-  value: string;
-  change?: string;
-  label?: string;
-  icon: LucideIcon;
-  color: string;
-}
-
 export default function Dashboard() {
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Executive Dashboard</h1>
-          <p className="text-gray-500">Real-time surveillance: Gulu District (Pilot)</p>
+    // SEMANTIC WRAPPER: Usage of <main> for accessibility
+    <main className="space-y-8 p-6 max-w-[1600px] mx-auto bg-gray-50/50 min-h-screen">
+      
+      {/* Header Section: Improved Typography & Actions */}
+      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-gray-200 pb-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            Executive Overview
+          </h1>
+          <p className="text-gray-500 font-medium flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Live Surveillance: Gulu District (Pilot)
+          </p>
         </div>
-        <button className="bg-brand-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm">
-          Export Report
-        </button>
-      </div>
+        
+        <div className="flex gap-3">
+          <button className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg shadow-sm hover:bg-gray-50 hover:text-gray-900 transition flex items-center gap-2">
+            <MoreHorizontal size={18} />
+            <span>Settings</span>
+          </button>
+          <button className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg shadow-md hover:bg-gray-800 transition flex items-center gap-2 transform active:scale-95">
+            <Download size={18} />
+            <span>Export Report</span>
+          </button>
+        </div>
+      </header>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Stats Grid: Semantic Colors & Spacing */}
+      <section aria-label="Key Performance Indicators" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard 
-          title="Total Households" 
+          label="Total Households" 
           value="82,450" 
-          change="+120 this week" 
+          trend="+120 this week" 
+          trendDirection="up"
           icon={Users} 
-          color="bg-blue-100 text-brand-blue"
+          intent="brand"
         />
         <StatsCard 
-          title="Safe Water Access" 
+          label="Safe Water Access" 
           value="64%" 
-          change="-2% vs last month" 
+          trend="-2% vs last month" 
+          trendDirection="down"
           icon={Droplets} 
-          color="bg-orange-100 text-brand-wash"
+          intent="warning"
         />
         <StatsCard 
-          title="Maternal Risk" 
+          label="Maternal Risk Cases" 
           value="312" 
-          label="High Risk Mothers" 
+          subtext="Requires immediate follow-up"
           icon={Activity} 
-          color="bg-purple-100 text-brand-live"
+          intent="success" // Purple treated as 'brand success' variant here
         />
         <StatsCard 
-          title="Active Alerts" 
+          label="Critical Alerts" 
           value="5" 
-          label="Critical Outbreaks" 
+          subtext="Active Outbreaks"
           icon={AlertTriangle} 
-          color="bg-red-100 text-brand-alert"
+          intent="danger"
         />
-      </div>
+      </section>
 
-      {/* Main Visualization Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
-        {/* Map Section */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-1 shadow-sm flex flex-col z-0 relative">
-          <div className="w-full h-full rounded-lg overflow-hidden">
+      {/* Main Visualization Area: Asymmetric Grid */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[600px]">
+        
+        {/* Map Section: Dominant Visual (8 cols) */}
+        <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white z-10">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <MapIcon className="text-gray-400" size={18}/>
+              Geospatial Distribution
+            </h3>
+            <div className="flex gap-2 text-xs">
+              <span className="px-2 py-1 bg-gray-100 rounded text-gray-600 font-medium">Satelllite</span>
+              <span className="px-2 py-1 bg-blue-50 text-blue-700 font-medium border border-blue-100">Terrain</span>
+            </div>
+          </div>
+          <div className="flex-1 relative bg-gray-100">
             <MapWrapper />
           </div>
         </div>
 
-        {/* Updated Activity Feed */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-gray-900">Live Field Updates</h3>
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
+        {/* Feed Section: Supporting Data (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col h-full">
+          <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+            <h3 className="font-semibold text-gray-900">Field Stream</h3>
+            <button className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">
+              View All
+            </button>
           </div>
           
-          <div className="space-y-6 overflow-y-auto pr-2">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex gap-4 items-start">
-                <div className={`mt-1 p-2 rounded-full shrink-0 ${activity.color}`}>
-                  <activity.icon size={16} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {activity.location} • <span className="font-medium text-gray-700">{activity.agent}</span>
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wide font-medium">
-                    {activity.time}
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="p-0 overflow-y-auto flex-1 custom-scrollbar">
+            <div className="flex flex-col">
+              {recentActivities.map((activity, index) => (
+                <ActivityRow 
+                  key={activity.id} 
+                  data={activity} 
+                  isLast={index === recentActivities.length - 1} 
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+            <button className="w-full py-2 text-sm text-gray-600 font-medium border border-gray-200 bg-white rounded-lg hover:bg-gray-50 hover:border-gray-300 transition shadow-sm">
+              Load Previous Shift
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
-function StatsCard({ title, value, change, label, icon: Icon, color }: StatsCardProps) {
+// --- Sub-Components: Micro-Interaction & Design System ---
+
+function StatsCard({ label, value, trend, trendDirection, subtext, icon: Icon, intent }: StatsCardProps) {
+  // Design System: Color Mapping
+  const colorMap = {
+    brand: "bg-blue-50 text-blue-600 border-blue-100",
+    warning: "bg-orange-50 text-orange-600 border-orange-100",
+    danger: "bg-red-50 text-red-600 border-red-100",
+    success: "bg-purple-50 text-purple-600 border-purple-100",
+  };
+
+  const trendColor = trendDirection === 'up' ? 'text-green-600' : trendDirection === 'down' ? 'text-red-600' : 'text-gray-500';
+
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm transition hover:shadow-md">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <h3 className="text-3xl font-bold text-gray-900 mt-2">{value}</h3>
+    <div className="group bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-300">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-xl ${colorMap[intent]} transition-colors`}>
+          <Icon size={22} strokeWidth={2} />
         </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon size={24} />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center text-xs">
-        {change ? (
-          <span className={change.includes('+') ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-            {change}
+        {trend && (
+          <span className={`text-xs font-semibold px-2 py-1 rounded-full bg-opacity-10 ${trendColor} bg-gray-100`}>
+            {trend}
           </span>
-        ) : (
-          <span className="text-brand-alert font-medium">{label}</span>
+        )}
+      </div>
+      <div>
+        <h4 className="text-gray-500 text-sm font-medium mb-1">{label}</h4>
+        {/* Tabular nums prevents jitter when numbers update live */}
+        <div className="text-3xl font-bold text-gray-900 tracking-tight tabular-nums">
+          {value}
+        </div>
+        {subtext && (
+          <p className="text-xs text-gray-400 mt-2 font-medium flex items-center gap-1">
+            <AlertCircle size={12} /> {subtext}
+          </p>
         )}
       </div>
     </div>
   );
 }
+
+function ActivityRow({ data, isLast }: { data: ActivityItem, isLast: boolean }) {
+  const getIcon = (type: ActivityType) => {
+    switch (type) {
+      case "Critical Alert": return { icon: AlertCircle, color: "text-red-600 bg-red-100" };
+      case "Maternal Health": return { icon: Baby, color: "text-purple-600 bg-purple-100" };
+      case "WASH Maintenance": return { icon: Wrench, color: "text-orange-600 bg-orange-100" };
+      case "Routine Data": return { icon: CheckCircle, color: "text-blue-600 bg-blue-100" };
+    }
+  };
+
+  const { icon: Icon, color } = getIcon(data.type);
+
+  return (
+    <div className={`relative flex gap-4 p-5 hover:bg-gray-50 transition-colors group cursor-default ${!isLast ? 'border-b border-gray-100' : ''}`}>
+      {/* Visual Timeline Connector could go here if we wanted strictly connected lines */}
+      
+      <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
+        <Icon size={18} strokeWidth={2.5} />
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start mb-1">
+          <p className="text-sm font-bold text-gray-900 truncate pr-2 group-hover:text-blue-700 transition-colors">
+            {data.type}
+          </p>
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+            {data.timestamp}
+          </span>
+        </div>
+        
+        <p className="text-sm text-gray-600 leading-relaxed mb-2">
+          {data.message}
+        </p>
+        
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1 font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+            <Users size={10} /> {data.agent}
+          </span>
+          <span className="flex items-center gap-1 text-gray-400">
+            <ChevronRight size={10} /> {data.location}
+          </span>
+        </div>
+      </div>
+
+      {data.isUrgent && (
+        <div className="absolute right-0 top-0 w-1 h-full bg-red-500 rounded-l opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
+    </div>
+  );
+}
+
+// Icon helper
+const MapIcon = ({ className, size }: { className?: string, size?: number }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+    <line x1="8" y1="2" x2="8" y2="18"></line>
+    <line x1="16" y1="6" x2="16" y2="22"></line>
+  </svg>
+);

@@ -3,64 +3,130 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, Map, Users, Stethoscope, Droplets, 
-  Sprout, Wallet, FileText, Bell, Settings 
+  LayoutDashboard, Map as MapIcon, Users, Stethoscope, Droplets, 
+  Sprout, Wallet, FileText, Bell, Settings, LogOut, ChevronRight,
+  ShieldCheck
 } from "lucide-react";
 
-// Menu items based on Proposal [cite: 468-477]
-const menuItems = [
-  { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { name: "Map Intelligence", icon: Map, path: "/map" },
-  { name: "Households", icon: Users, path: "/households" },
-  { name: "Health", icon: Stethoscope, path: "/health", color: "text-brand-blue" },
-  { name: "WASH", icon: Droplets, path: "/wash", color: "text-brand-wash" },
-  { name: "Agriculture", icon: Sprout, path: "/agriculture", color: "text-brand-agri" },
-  { name: "Livelihoods", icon: Wallet, path: "/livelihoods", color: "text-brand-live" },
-  { name: "Reports", icon: FileText, path: "/reports" },
-  //Contingent
-  { name: "Contingent", icon: Bell, path: "/contingent", color: "text-brand-contingent" },
+// --- Configuration: Semantic Grouping ---
+// We group items to reduce cognitive load (Miller's Law).
+// This allows users to scan by category rather than reading a flat list.
+const navStructure = [
+  {
+    groupLabel: "Overview",
+    items: [
+      { name: "Dashboard", icon: LayoutDashboard, path: "/" },
+      { name: "Map Intelligence", icon: MapIcon, path: "/map" },
+    ]
+  },
+  {
+    groupLabel: "Intervention Sectors",
+    items: [
+      { name: "Health", icon: Stethoscope, path: "/health", accent: "text-blue-500" },
+      { name: "WASH", icon: Droplets, path: "/wash", accent: "text-cyan-500" },
+      { name: "Agriculture", icon: Sprout, path: "/agriculture", accent: "text-green-500" },
+      { name: "Livelihoods", icon: Wallet, path: "/livelihoods", accent: "text-purple-500" },
+    ]
+  },
+  {
+    groupLabel: "Operations",
+    items: [
+      { name: "Households", icon: Users, path: "/households" },
+      { name: "Contingent", icon: ShieldCheck, path: "/contingent", accent: "text-indigo-600" },
+      { name: "Reports", icon: FileText, path: "/reports" },
+    ]
+  }
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-white h-screen border-r border-gray-200 fixed left-0 top-0 hidden md:flex flex-col z-50">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-100">
-        <h1 className="text-2xl font-bold text-brand-blue tracking-tight">
-          VillageHealth<span className="text-gray-800">360</span>
-        </h1>
-        <p className="text-xs text-gray-500 mt-1">Rural Intelligence Platform</p>
+    <aside className="w-72 bg-white h-screen border-r border-gray-200 fixed left-0 top-0 hidden md:flex flex-col z-50 shadow-sm font-sans">
+      
+      {/* 1. Brand Header: Visual Anchoring */}
+      <div className="px-6 py-8">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-blue-200 shadow-lg">
+            <LayoutDashboard size={18} strokeWidth={2.5} />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+            VillageHealth<span className="text-blue-600">360</span>
+          </h1>
+        </div>
+        <p className="text-xs text-gray-400 font-medium pl-10 uppercase tracking-wider">
+          Rural Intelligence Platform
+        </p>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              href={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-brand-blue/10 text-brand-blue"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <item.icon size={20} className={item.color || ""} />
-              {item.name}
-            </Link>
-          );
-        })}
+      {/* 2. Navigation Area: Scrollable & Segmented */}
+      <nav 
+        className="flex-1 overflow-y-auto px-4 space-y-8 custom-scrollbar"
+        aria-label="Main Navigation"
+      >
+        {navStructure.map((group, groupIdx) => (
+          <div key={groupIdx}>
+            {/* Semantic Label for Screen Readers & Scanning */}
+            <h3 className="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 select-none">
+              {group.groupLabel}
+            </h3>
+            
+            <ul className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = pathname === item.path;
+                
+                return (
+                  <li key={item.path}>
+                    <Link
+                      href={item.path}
+                      // ARIA: Current page indication
+                      aria-current={isActive ? "page" : undefined}
+                      className={`
+                        group flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out
+                        ${isActive 
+                          ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100" 
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Icon: Subtly colored if active or has accent, otherwise gray */}
+                        <item.icon 
+                          size={18} 
+                          strokeWidth={isActive ? 2.5 : 2}
+                          className={`
+                            transition-colors duration-200
+                            ${isActive ? "text-blue-600" : item.accent ? item.accent : "text-gray-400 group-hover:text-gray-600"}
+                          `} 
+                        />
+                        <span>{item.name}</span>
+                      </div>
+                      
+                      {/* Active Indicator: Subtle Chevron */}
+                      {isActive && (
+                        <ChevronRight size={14} className="text-blue-400" />
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {/* Footer Settings */}
-      <div className="p-4 border-t border-gray-100 bg-gray-50">
-        <Link href="/settings" className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-            <Settings size={20} />
-            System Settings
-        </Link>
+      {/* 3. User Profile Footer: Trust & Settings */}
+      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all cursor-pointer group border border-transparent hover:border-gray-200">
+          <div className="w-9 h-9 rounded-full bg-linear-to-br from-blue-100 to-indigo-100 border border-white shadow-sm flex items-center justify-center text-blue-700 font-bold text-xs">
+            JD
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">Jane Doe</p>
+            <p className="text-xs text-gray-500 truncate">District Admin</p>
+          </div>
+          <Settings size={16} className="text-gray-400 group-hover:text-gray-600" />
+        </div>
       </div>
     </aside>
   );

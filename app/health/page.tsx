@@ -2,213 +2,280 @@
 
 import { 
   Activity, Baby, Syringe, HeartPulse, 
-  TrendingUp, AlertCircle, Calendar, LucideIcon 
+  TrendingUp, AlertCircle, Calendar, LucideIcon,
+  ArrowUpRight, ArrowDownRight, MapPin, Phone
 } from "lucide-react";
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, BarChart, Bar 
+  Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Legend
 } from "recharts";
 
-// 1. Mock Data: Disease Trends [cite: 35-37]
+// --- Mock Data ---
 const diseaseData = [
-  { month: "Jan", malaria: 65, diarrhea: 40, respiratory: 24 },
-  { month: "Feb", malaria: 59, diarrhea: 35, respiratory: 28 },
-  { month: "Mar", malaria: 80, diarrhea: 25, respiratory: 22 }, // Spikes in rain
-  { month: "Apr", malaria: 81, diarrhea: 30, respiratory: 30 },
-  { month: "May", malaria: 56, diarrhea: 20, respiratory: 18 },
-  { month: "Jun", malaria: 40, diarrhea: 15, respiratory: 15 },
+  { month: "Jan", malaria: 65, diarrhea: 40, threshold: 75 },
+  { month: "Feb", malaria: 59, diarrhea: 35, threshold: 75 },
+  { month: "Mar", malaria: 80, diarrhea: 25, threshold: 75 }, // Crossing threshold
+  { month: "Apr", malaria: 81, diarrhea: 30, threshold: 75 },
+  { month: "May", malaria: 56, diarrhea: 20, threshold: 75 },
+  { month: "Jun", malaria: 40, diarrhea: 15, threshold: 75 },
 ];
 
-// 2. Mock Data: Immunization Coverage [cite: 28-30]
 const immunizationData = [
-  { name: "Polio", rate: 92 },
-  { name: "Measles", rate: 85 },
-  { name: "BCG", rate: 98 },
-  { name: "DPT3", rate: 78 }, // Gap identified
+  { name: "BCG (Birth)", rate: 98, fill: "#10B981" }, // Green
+  { name: "Polio (Opv)", rate: 92, fill: "#3B82F6" }, // Blue
+  { name: "Measles", rate: 85, fill: "#F59E0B" },    // Orange
+  { name: "DPT3 (14wk)", rate: 78, fill: "#EF4444" }, // Red (Critical Gap)
 ];
 
-// 3. Mock Data: High-Risk Mothers (Action List) [cite: 25-27]
 const highRiskMothers = [
-  { id: "M-102", name: "Achan Grace", village: "Koro", issue: "Anemia / 3rd Trimester", due: "2 weeks" },
-  { id: "M-205", name: "Laker Sarah", village: "Bwobo", issue: "Previous Complications", due: "1 month" },
-  { id: "M-311", name: "Akello Rose", village: "Ajulu", issue: "Teenage Pregnancy", due: "3 weeks" },
+  { id: "M-102", name: "Achan Grace", village: "Koro", issue: "Anemia (Hb < 8g/dL)", riskLevel: "Critical", due: "2 weeks" },
+  { id: "M-205", name: "Laker Sarah", village: "Bwobo", issue: "History of PPH", riskLevel: "High", due: "1 month" },
+  { id: "M-311", name: "Akello Rose", village: "Ajulu", issue: "Teenage (16y) Primigravida", riskLevel: "Moderate", due: "3 weeks" },
 ];
 
 export default function HealthPage() {
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <main className="space-y-8 bg-gray-50/50 min-h-screen p-6">
+      
+      {/* 1. Header: Context & Status */}
+      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Health Surveillance</h1>
-          <p className="text-gray-500 text-sm">Maternal, Child & Disease Monitoring</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Health Surveillance</h1>
+          <p className="text-gray-500 font-medium mt-1">
+            Maternal, Child & Disease Epidemiology • <span className="text-gray-400 font-normal">Q2 2024 Report</span>
+          </p>
         </div>
-        <div className="flex gap-2">
-          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center gap-1">
-            <TrendingUp size={14} /> Trends: Stable
+        <div className="flex items-center gap-3">
+          <span className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-semibold shadow-sm flex items-center gap-2">
+            <Calendar size={14} /> Last Updated: 2 Hours ago
+          </span>
+          <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm border border-green-200">
+            <TrendingUp size={14} /> District Status: Stable
           </span>
         </div>
-      </div>
+      </header>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Metric Cards: Quick Scan */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <HealthStat 
-          title="ANC Visits (4+)" 
+          label="ANC 4+ Visits" 
           value="64%" 
-          target="Target: 75%" 
+          trend="-12% vs Target" 
+          trendDir="down"
           icon={Baby} 
-          color="text-pink-600 bg-pink-50" 
+          intent="warning"
         />
         <HealthStat 
-          title="Fully Immunized" 
+          label="Fully Immunized" 
           value="82%" 
-          target="Target: 90%" 
+          trend="Gap in DPT3" 
+          trendDir="neutral"
           icon={Syringe} 
-          color="text-blue-600 bg-blue-50" 
+          intent="brand"
         />
         <HealthStat 
-          title="Malaria Cases" 
+          label="Malaria Incidence" 
           value="1,240" 
-          target="-5% vs last month" 
+          trend="-5% vs last month" 
+          trendDir="up" // Up is good here because cases went down (semantic logic)
           icon={Activity} 
-          color="text-red-600 bg-red-50" 
+          intent="success"
         />
         <HealthStat 
-          title="Facility Deliveries" 
+          label="Facility Deliveries" 
           value="88%" 
-          target="+2% vs last month" 
+          trend="+2% increase" 
+          trendDir="up"
           icon={HeartPulse} 
-          color="text-purple-600 bg-purple-50" 
+          intent="brand"
         />
-      </div>
+      </section>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 3. Data Visualization Layer */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Chart 1: Disease Trends */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-brand-blue" />
-            Disease Incidence Trends
-          </h3>
-          <div className="h-64 w-full">
+        {/* Chart A: Epidemiology Trends */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Activity size={18} className="text-red-500" />
+                Disease Incidence Trends
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Compared against district alert thresholds</p>
+            </div>
+          </div>
+          
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={diseaseData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} fontSize={12} />
-                <YAxis axisLine={false} tickLine={false} fontSize={12} />
-                <Tooltip />
-                <Line type="monotone" dataKey="malaria" stroke="#EF4444" strokeWidth={2} dot={false} name="Malaria" />
-                <Line type="monotone" dataKey="diarrhea" stroke="#F97316" strokeWidth={2} dot={false} name="Diarrhea" />
+              <LineChart data={diseaseData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#6B7280'}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#6B7280'}} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  itemStyle={{ fontSize: '12px', fontWeight: 600 }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
+                
+                {/* Semantic: Threshold Line */}
+                <ReferenceLine y={75} label="Alert Threshold" stroke="red" strokeDasharray="3 3" opacity={0.5} />
+                
+                <Line type="monotone" dataKey="malaria" stroke="#EF4444" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} name="Malaria Cases" />
+                <Line type="monotone" dataKey="diarrhea" stroke="#F97316" strokeWidth={3} dot={false} name="Diarrhea" />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex justify-center gap-6 mt-2 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Malaria</span>
-            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Diarrhea</span>
-          </div>
         </div>
 
-        {/* Chart 2: Immunization Gaps */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Syringe size={18} className="text-blue-600" />
-            Immunization Coverage
-          </h3>
-          <div className="h-64 w-full">
+        {/* Chart B: Immunization Funnel */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+          <div className="mb-4">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <Syringe size={18} className="text-blue-600" />
+              Immunization Drop-off
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Tracking retention from Birth (BCG) to 14 Weeks (DPT3).
+              {/* Trigger diagram for medical context */}
+              
+
+[Image of WHO immunization schedule chart]
+
+            </p>
+          </div>
+
+          <div className="h-72 w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={immunizationData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
+              <BarChart data={immunizationData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={60} tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{fill: 'transparent'}} />
-                <Bar dataKey="rate" fill="#004AAD" radius={[0, 4, 4, 0]} barSize={20} />
+                <YAxis dataKey="name" type="category" width={90} tick={{fontSize: 11, fontWeight: 500, fill: '#374151'}} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{fill: '#F3F4F6'}} />
+                <Bar dataKey="rate" radius={[0, 4, 4, 0]} barSize={32} background={{ fill: '#F9FAFB' }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">Percentage of eligible children fully vaccinated</p>
+          
+          <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-100 flex gap-3 items-start">
+            <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-red-700">Critical Insight: DPT3 Gap</p>
+              <p className="text-[11px] text-red-600/80 leading-relaxed">
+                20% drop-off detected between Birth and Week 14. Suggests failure in follow-up mechanisms.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Priority Action List: Maternal Health */}
-      <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden">
-        <div className="bg-red-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
-          <h3 className="font-bold text-red-800 flex items-center gap-2">
-            <AlertCircle size={18} />
-            Urgent Follow-up: High Risk Mothers
-          </h3>
-          <button className="text-xs font-bold text-red-600 hover:text-red-800">View All</button>
+      {/* 4. Action Layer: Risk Stratification */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div>
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <AlertCircle size={18} className="text-red-600" />
+              High Risk Maternal Registry
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Mothers requiring immediate VHT intervention.
+              {/* Contextual diagram for clinical logic */}
+              
+
+[Image of ANC risk stratification pyramid]
+
+            </p>
+          </div>
+          <button className="text-xs font-bold text-brand-blue bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+            View Full Cohort
+          </button>
         </div>
+        
         <div className="divide-y divide-gray-100">
           {highRiskMothers.map((mom) => (
-            <div key={mom.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-xs">
-                  {mom.id}
+            <div key={mom.id} className="p-4 md:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-gray-50 transition-colors group">
+              
+              <div className="flex items-start gap-4">
+                <div className={`
+                  w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm
+                  ${mom.riskLevel === 'Critical' ? 'bg-red-100 text-red-700 ring-4 ring-red-50' : 'bg-orange-100 text-orange-700'}
+                `}>
+                  {mom.id.split('-')[1]}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">{mom.name}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <MapPinIcon size={10} /> {mom.village} Village
-                  </p>
+                  <h4 className="text-sm font-bold text-gray-900">{mom.name}</h4>
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                    <span className="flex items-center gap-1"><MapPin size={12} /> {mom.village}</span>
+                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                    <span className="font-medium text-gray-700">{mom.issue}</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded inline-block">
-                  {mom.issue}
-                </p>
-                <p className="text-xs text-gray-500 mt-1 flex items-center justify-end gap-1">
-                  <Calendar size={10} /> Due: {mom.due}
-                </p>
+
+              <div className="flex items-center gap-4 pl-14 md:pl-0">
+                <div className="text-right">
+                  <div className="text-xs font-medium text-gray-500">EDD Timeline</div>
+                  <div className="text-sm font-bold text-gray-900 flex items-center gap-1 justify-end">
+                    <Calendar size={14} className="text-brand-blue" /> {mom.due}
+                  </div>
+                </div>
+                
+                <button className="p-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:text-blue-600 hover:border-blue-200 transition shadow-sm group-hover:shadow-md">
+                  <Phone size={18} />
+                </button>
               </div>
+
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
-// --- Helper Components & Types ---
+// --- Component System ---
 
 interface HealthStatProps {
-  title: string;
+  label: string;
   value: string;
-  target: string;
+  trend: string;
+  trendDir: 'up' | 'down' | 'neutral';
   icon: LucideIcon;
-  color: string;
+  intent: 'brand' | 'warning' | 'success';
 }
 
-function HealthStat({ title, value, target, icon: Icon, color }: HealthStatProps) {
+function HealthStat({ label, value, trend, trendDir, icon: Icon, intent }: HealthStatProps) {
+  const styles = {
+    brand: "bg-blue-50 text-blue-600",
+    warning: "bg-orange-50 text-orange-600",
+    success: "bg-green-50 text-green-600",
+  };
+
+  const trendColor = 
+    trendDir === 'neutral' ? 'text-gray-400' :
+    (trendDir === 'up' && intent !== 'warning') || (trendDir === 'down' && intent === 'warning') 
+      ? 'text-green-600' 
+      : 'text-red-500';
+
+  const TrendIcon = trendDir === 'up' ? ArrowUpRight : ArrowDownRight;
+
   return (
-    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
-      <div>
-        <p className="text-sm text-gray-500 font-medium">{title}</p>
-        <h4 className="text-2xl font-bold text-gray-900 mt-1">{value}</h4>
-        <p className="text-xs text-gray-400 mt-1">{target}</p>
+    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start">
+        <div className={`p-2.5 rounded-lg ${styles[intent]}`}>
+          <Icon size={22} />
+        </div>
+        {trendDir !== 'neutral' && (
+          <span className={`flex items-center text-xs font-bold ${trendColor} bg-gray-50 px-2 py-1 rounded-full`}>
+            <TrendIcon size={14} /> {trendDir === 'up' ? '+' : ''}{trend.split(' ')[0]}
+          </span>
+        )}
       </div>
-      <div className={`p-2 rounded-lg ${color}`}>
-        <Icon size={20} />
+      <div className="mt-4">
+        <p className="text-sm font-medium text-gray-500">{label}</p>
+        <h4 className="text-2xl font-bold text-gray-900 tracking-tight mt-1">{value}</h4>
+        <p className="text-xs text-gray-400 mt-1">{trend}</p>
       </div>
     </div>
-  );
-}
-
-function MapPinIcon({ size }: { size: number }) {
-  // Simple SVG wrapper since we are inside a loop and want to be clean
-  return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3"></circle>
-    </svg>
   );
 }
