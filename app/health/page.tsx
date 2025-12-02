@@ -168,12 +168,6 @@ export default function PublicHealthTriage() {
               <button className="text-xs font-bold text-blue-700 mt-2 hover:underline">
                  Generate VHT Follow-up List <ChevronRight size={12} className="inline-block" />
               </button>
-              {/* Contextual link to clinical standard */}
-              <img 
-                src="https://www.cdc.gov/vaccines/hcp/imz-schedules/images/schedule-child.jpg?_=95775" 
-                alt="WHO immunization schedule chart" 
-                className="w-full h-auto mt-2 rounded-lg"
-              />
             </div>
           </div>
         </div>
@@ -191,11 +185,6 @@ export default function PublicHealthTriage() {
               Prioritized caseload for VHT intervention, sorted by S.M.A.R.T. protocol trigger.
             </p>
             {/* Contextual link to clinical standard */}
-            <img 
-              src="https://www.researchgate.net/publication/318080864/figure/fig1/AS:627807101132800@1526692285326/Maternal-outcomes-pyramid-a-near-miss-approach.png" 
-              alt="ANC risk stratification pyramid" 
-              className="w-full max-w-md h-auto mt-2 rounded-lg"
-            />
           </div>
           <button className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors shadow-sm w-full sm:w-auto">
             View Full Cohort (142 Active)

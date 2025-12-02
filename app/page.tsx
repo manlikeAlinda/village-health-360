@@ -109,9 +109,9 @@ export default function Dashboard() {
           intent="warning"
         />
         <StatsCard
-          label="Maternal Risk Cases"
-          value="312"
-          subtext="Requires immediate follow-up"
+          label="Personnel On Ground"
+          value="82,000"
+          subtext="Active Field Agents"
           icon={Activity}
           intent="success" // Purple treated as 'brand success' variant here
         />
