@@ -17,6 +17,8 @@ const menuItems = [
   { name: "Agriculture", icon: Sprout, path: "/agriculture", color: "text-brand-agri" },
   { name: "Livelihoods", icon: Wallet, path: "/livelihoods", color: "text-brand-live" },
   { name: "Reports", icon: FileText, path: "/reports" },
+  //Contingent
+  { name: "Contingent", icon: Bell, path: "/contingent", color: "text-brand-contingent" },
 ];
 
 export default function Sidebar() {
