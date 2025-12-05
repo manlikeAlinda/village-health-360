@@ -375,6 +375,13 @@ export default function Dashboard() {
         {/* 3. Reactive KPI Grid */}
         <section aria-label="Key Performance Indicators" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <StatsCard
+            label="Active Agents"
+            value={metrics.agents}
+            subtext="98% Reporting Rate"
+            icon={Activity}
+            intent="success"
+          />
+          <StatsCard
             label="Household Coverage"
             value={metrics.coverage}
             trend={currentScope === 'National' ? "+120 this week" : "+12 this week"}
@@ -390,13 +397,7 @@ export default function Dashboard() {
             icon={Droplets}
             intent="warning"
           />
-          <StatsCard
-            label="Active Agents"
-            value={metrics.agents}
-            subtext="98% Reporting Rate"
-            icon={Activity}
-            intent="success"
-          />
+
           <StatsCard
             label={`Active ${ALERT_CATEGORIES[activeAlertIndex]}`}
             value={metrics.outbreaks}

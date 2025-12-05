@@ -108,7 +108,7 @@ const navigationGroups: NavGroup[] = [
         description: "Beneficiary registry and profiles"
       },
       {
-        name: "Field Teams",
+        name: "Field Coordinators",
         icon: ShieldCheck,
         path: "/contingent",
         description: "Personnel deployment and coordination"
@@ -308,8 +308,8 @@ function UserProfileCard({ user, onSignOut }: { user: UserProfile; onSignOut?: (
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${isExpanded
-            ? 'bg-gray-100 ring-1 ring-gray-200'
-            : 'hover:bg-gray-100 border border-transparent hover:border-gray-200'
+          ? 'bg-gray-100 ring-1 ring-gray-200'
+          : 'hover:bg-gray-100 border border-transparent hover:border-gray-200'
           }`}
         aria-expanded={isExpanded}
         aria-haspopup="menu"
