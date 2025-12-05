@@ -486,7 +486,7 @@ export default function Sidebar() {
             </div>
             <div>
               <span className="text-lg font-bold text-gray-900 tracking-tight">
-                <span className="text-blue-600">VillageHealth360</span>
+                <span className="text-blue-600">VillageHealth</span><span className="text-black">360</span>
               </span>
               <p className="text-[10px] text-gray-400 -mt-0.5 font-medium">Community Health Platform</p>
             </div>
