@@ -349,7 +349,7 @@ export default function PublicHealthTriage() {
                       {immunizationData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
-                      <LabelList dataKey="rate" position="right" formatter={(val: number) => `${val}%`} style={{ fontSize: '12px', fontWeight: 'bold', fill: '#4B5563' }} />
+                      <LabelList dataKey="rate" position="right" formatter={(val) => `${val}%`} style={{ fontSize: '12px', fontWeight: 'bold', fill: '#4B5563' }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
