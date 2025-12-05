@@ -1,0 +1,185 @@
+{
+    "Central": {
+        "Kampala": [
+            "Kampala City"
+        ],
+        "Buganda South": [
+            "Bukomansimbi",
+            "Butambala",
+            "Gomba",
+            "Kalangala",
+            "Kalungu",
+            "Kyotera",
+            "Lwengo",
+            "Lyantonde",
+            "Masaka",
+            "Masaka City",
+            "Mpigi",
+            "Rakai",
+            "Sembabule",
+            "Wakiso"
+        ],
+        "Buganda North": [
+            "Buikwe",
+            "Buvuma",
+            "Kassanda",
+            "Kayunga",
+            "Kiboga",
+            "Kyankwanzi",
+            "Luweero",
+            "Mityana",
+            "Mubende",
+            "Mukono",
+            "Nakaseke",
+            "Nakasongola",
+            "Kasanda"
+        ]
+    },
+    "Eastern": {
+        "Busoga": [
+            "Bugiri",
+            "Bugweri",
+            "Buyende",
+            "Iganga",
+            "Jinja",
+            "Jinja City",
+            "Kaliro",
+            "Kamuli",
+            "Luuka",
+            "Mayuge",
+            "Namayingo",
+            "Namutumba"
+        ],
+        "Bukedi": [
+            "Budaka",
+            "Busia",
+            "Butaleja",
+            "Butebo",
+            "Kibuku",
+            "Pallisa",
+            "Tororo"
+        ],
+        "Elgon": [
+            "Bududa",
+            "Bukwo",
+            "Bulambuli",
+            "Kapchorwa",
+            "Kween",
+            "Manafwa",
+            "Mbale",
+            "Mbale City",
+            "Namisindwa",
+            "Sironko"
+        ],
+        "Teso": [
+            "Amuria",
+            "Bukedea",
+            "Kaberamaido",
+            "Kalaki",
+            "Kapelebyong",
+            "Katakwi",
+            "Kumi",
+            "Ngora",
+            "Serere",
+            "Soroti",
+            "Soroti City"
+        ]
+    },
+    "Northern": {
+        "Karamoja": [
+            "Abim",
+            "Amudat",
+            "Kaabong",
+            "Karenga",
+            "Kotido",
+            "Moroto",
+            "Nabilatuk",
+            "Nakapiripirit",
+            "Napak"
+        ],
+        "Lango": [
+            "Alebtong",
+            "Amolatar",
+            "Apac",
+            "Dokolo",
+            "Kole",
+            "Kwania",
+            "Lira",
+            "Lira City",
+            "Otuke",
+            "Oyam"
+        ],
+        "Acholi": [
+            "Agago",
+            "Amuru",
+            "Gulu",
+            "Gulu City",
+            "Kitgum",
+            "Lamwo",
+            "Nwoya",
+            "Omoro",
+            "Pader"
+        ],
+        "West Nile": [
+            "Adjumani",
+            "Arua",
+            "Arua City",
+            "Koboko",
+            "Madi-Okollo",
+            "Maracha",
+            "Moyo",
+            "Nebbi",
+            "Obongi",
+            "Pakwach",
+            "Terego",
+            "Yumbe",
+            "Zombo"
+        ]
+    },
+    "Western": {
+        "Bunyoro": [
+            "Buliisa",
+            "Hoima",
+            "Hoima City",
+            "Kagadi",
+            "Kakumiro",
+            "Kibaale",
+            "Kikuube",
+            "Kiryandongo",
+            "Masindi"
+        ],
+        "Tooro": [
+            "Bundibugyo",
+            "Kabarole",
+            "Kamwenge",
+            "Kitagwenda",
+            "Kyegegwa",
+            "Kyenjojo",
+            "Ntoroko",
+            "Kasese"
+        ],
+        "Ankole": [
+            "Buhweju",
+            "Bushenyi",
+            "Ibanda",
+            "Isingiro",
+            "Kazo",
+            "Kiruhura",
+            "Mbarara",
+            "Mbarara City",
+            "Mitooma",
+            "Ntungamo",
+            "Rubirizi",
+            "Rwampara",
+            "Sheema"
+        ],
+        "Kigezi": [
+            "Kabale",
+            "Kanungu",
+            "Kisoro",
+            "Rubanda",
+            "Rukiga",
+            "Rukungiri"
+        ]
+    }
+}

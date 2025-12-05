@@ -1,302 +1,614 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { 
-  Users, MapPin, Search, Phone, 
-  Mail, X, ArrowDownUp, Filter, Info,
-  ChevronRight, Briefcase
+import { useState, useMemo, useEffect } from "react";
+import {
+  Users,
+  MapPin,
+  Search,
+  Phone,
+  Mail,
+  ArrowLeft,
+  Filter,
+  MoreHorizontal,
+  ChevronRight,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Download,
+  Share2,
+  ChevronDown,
+  Briefcase,
+  Building2,
+  UserCheck
 } from "lucide-react";
-
-import UgandaMap from "./UgandaMap";
 import personnelDataRaw from "./personnel_data.json";
+import districtsData from "./districts.json";
 
-// --- Data Contracts ---
+// --- Domain Types ---
+
 interface PersonnelEntry {
   name: string;
   phone: string;
-  email: string;
-  role: string;
-  level: string;
+  email?: string;
+  role?: string;
+  level?: string;
   district: string;
   subcounty: string;
   region: string;
   constituency?: string;
 }
 
-// Data Casting & Validation
-const personnelData = personnelDataRaw as unknown as PersonnelEntry[];
+interface DistrictNode {
+  name: string;
+  count: number;
+  region: string;
+  subRegion: string;
+  staff: PersonnelEntry[];
+}
+
+type SortDirection = 'asc' | 'desc';
+type SortKey = keyof PersonnelEntry;
+
+// --- Custom Hook / Data Logic ---
+
+function useDeploymentData() {
+  const data = useMemo(() => {
+    const rawStaff = (personnelDataRaw as unknown) as PersonnelEntry[];
+    const districtHierarchy = (districtsData as unknown) as Record<string, Record<string, string[]>>;
+
+    const staffByDistrict: Record<string, PersonnelEntry[]> = {};
+    (rawStaff || []).forEach(p => {
+      const key = (p.district || "").toLowerCase().trim();
+      if (!staffByDistrict[key]) staffByDistrict[key] = [];
+      staffByDistrict[key].push(p);
+    });
+
+    const nodes: DistrictNode[] = [];
+    Object.entries(districtHierarchy || {}).forEach(([region, subRegions]: [string, any]) => {
+      Object.entries(subRegions).forEach(([subRegion, districts]: [string, any]) => {
+        (districts as string[]).forEach(districtName => {
+          const key = districtName.toLowerCase().trim();
+          const staff = staffByDistrict[key] || [];
+          nodes.push({
+            name: districtName,
+            region,
+            subRegion,
+            staff,
+            count: staff.length
+          });
+        });
+      });
+    });
+
+    return nodes.sort((a, b) => a.name.localeCompare(b.name));
+  }, [personnelDataRaw, districtsData]);
+
+  return data;
+}
+
+// --- Main Layout Component ---
 
 export default function ContingentPage() {
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const districts = useDeploymentData();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Handle interactions
-  const handleMapClick = (districtTitle: string) => {
-    if (selectedDistrict === districtTitle && isDrawerOpen) {
-      // If clicking the same district, toggle drawer
-      setIsDrawerOpen(!isDrawerOpen);
-    } else {
-      setSelectedDistrict(districtTitle);
-      setIsDrawerOpen(true);
-    }
-  };
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && setSelectedId(null);
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
-  const closeDrawer = () => setIsDrawerOpen(false);
+  const selectedDistrictData = useMemo(
+    () => districts.find(d => d.name === selectedId),
+    [districts, selectedId]
+  );
 
-  // Memoized Data Filtering
-  const staffData = useMemo(() => {
-    if (!selectedDistrict) return [];
-    
-    if (!Array.isArray(personnelData)) {
-      console.error("Data Integrity Error: Source is not an array.");
-      return [];
-    }
-
-    return personnelData.filter(p => 
-      p.district && p.district.toLowerCase() === selectedDistrict.toLowerCase()
-    );
-  }, [selectedDistrict]);
+  // Calculate KPI Stats
+  const totalPersonnel = useMemo(() => districts.reduce((acc, d) => acc + d.count, 0), [districts]);
+  const districtsWithStaff = useMemo(() => districts.filter(d => d.count > 0).length, [districts]);
+  const avgPerDistrict = useMemo(() => Math.round(totalPersonnel / districtsWithStaff) || 0, [totalPersonnel, districtsWithStaff]);
 
   return (
-    <main className="space-y-6 h-full flex flex-col max-w-[1600px] mx-auto w-full p-6">
-      
-      {/* 1. Header: Operational Control */}
-      <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
-               Module: Human Resources
-             </span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Personnel Roster & GIS</h1>
-          <p className="text-gray-500 font-medium mt-1">
-            Geospatial deployment map. Select a district to view active field agents.
-          </p>
-        </div>
-        
-        {/* Legend / Status Widget */}
-        <div className="flex items-center gap-4 text-xs font-medium bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
-           <div className="flex items-center gap-1.5">
-             <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-pulse"></span>
-             <span className="text-gray-700">Active Deployment</span>
-           </div>
-           <div className="w-px h-4 bg-gray-200"></div>
-           <div className="flex items-center gap-1.5">
-             <span className="w-2.5 h-2.5 bg-gray-300 rounded-full"></span>
-             <span className="text-gray-500">No Data / Inactive</span>
-           </div>
-        </div>
-      </header>
-       
-      {/* 2. Main Visualization Container */}
-      <section className="flex-1 bg-gray-100 rounded-2xl border border-gray-200 shadow-inner overflow-hidden relative min-h-[650px] flex">
-        
-        {/* A. The Map Stage */}
-        <div className="flex-1 relative z-0">
-          
-          {/* Floating HUD */}
-          <div className="absolute top-6 left-6 z-10 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-lg border border-gray-100 max-w-xs pointer-events-none transition-all duration-300">
-            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <MapPin size={16} className="text-blue-600"/> 
-              {selectedDistrict ? `${selectedDistrict} District` : "Select a Zone"}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              {selectedDistrict 
-                ? `Accessed ${staffData.length} records in this jurisdiction.` 
-                : "Navigate the map to load personnel manifests."}
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50/30 p-6 lg:p-10 mt-16">
+      {/* 1. Executive Header */}
+      <header className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">
+              Operational Capacity
+            </h1>
+            <p className="text-sm text-gray-500 mt-1.5 max-w-xl">
+              Staff deployment and personnel directory across all districts.
             </p>
           </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm">
+              <Download size={16} /> Export Report
+            </button>
+            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition shadow-sm">
+              <Share2 size={16} /> Share Dashboard
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <div className="w-full h-full p-4 md:p-12 transition-transform duration-700 ease-in-out">
-            <UgandaMap 
-              activeDistrict={selectedDistrict} 
-              onSelect={handleMapClick} 
-            />
+      {/* 2. KPI Section */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="p-2.5 rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200">
+              <Users size={20} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{totalPersonnel.toLocaleString()}</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Total Personnel</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Active staff deployed</p>
           </div>
         </div>
 
-        {/* B. The Slide-Over Drawer (Replaces Modal) */}
-        <div 
-          className={`
-            absolute top-0 right-0 h-full bg-white shadow-2xl z-20 transition-all duration-500 ease-in-out border-l border-gray-200 flex flex-col
-            ${isDrawerOpen ? "translate-x-0 w-full md:w-[450px]" : "translate-x-full w-full md:w-[450px] opacity-0"}
-          `}
-          aria-hidden={!isDrawerOpen}
-        >
-          {selectedDistrict && (
-            <RosterDrawerContent 
-              staff={staffData} 
-              area={selectedDistrict} 
-              onClose={closeDrawer} 
-            />
-          )}
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="p-2.5 rounded-xl border bg-green-50 text-green-700 border-green-200">
+              <Building2 size={20} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{districtsWithStaff}</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Active Districts</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Of {districts.length} total districts</p>
+          </div>
         </div>
-        
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="p-2.5 rounded-xl border bg-purple-50 text-purple-700 border-purple-200">
+              <UserCheck size={20} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{avgPerDistrict}</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Avg. per District</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Staff distribution ratio</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex justify-between items-start">
+            <div className="p-2.5 rounded-xl border bg-blue-50 text-blue-700 border-blue-200">
+              <Briefcase size={20} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">4</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Regions Covered</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Central, Eastern, Northern, Western</p>
+          </div>
+        </div>
       </section>
+
+      {/* 3. Master-Detail Layout */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 380px)', minHeight: '500px' }}>
+        <div className="flex h-full">
+          <aside
+            className="w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-200 bg-gray-50/50"
+            aria-label="District Navigation"
+          >
+            <DistrictSidebar
+              data={districts}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </aside>
+
+          <main className="flex-1 relative bg-white overflow-hidden">
+            {selectedDistrictData ? (
+              <div className="h-full w-full hidden md:block">
+                <PersonnelDirectory
+                  district={selectedDistrictData}
+                  onClose={() => setSelectedId(null)}
+                />
+              </div>
+            ) : (
+              <div className="hidden md:flex h-full items-center justify-center">
+                <EmptyState />
+              </div>
+            )}
+
+            <div
+              className={`
+                absolute inset-0 z-20 bg-white transform transition-transform duration-300 cubic-bezier(0.16, 1, 0.3, 1) md:hidden
+                ${selectedId ? 'translate-x-0' : 'translate-x-full'}
+              `}
+              aria-modal="true"
+              role="dialog"
+            >
+              {selectedDistrictData && (
+                <PersonnelDirectory
+                  district={selectedDistrictData}
+                  onClose={() => setSelectedId(null)}
+                  isMobile
+                />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
     </main>
   );
 }
 
-// --- Drawer Logic & UI ---
+// --- Sidebar Component ---
 
-interface RosterProps {
-  staff: PersonnelEntry[];
-  area: string;
-  onClose: () => void;
-}
+function DistrictSidebar({
+  data,
+  selectedId,
+  onSelect
+}: {
+  data: DistrictNode[],
+  selectedId: string | null,
+  onSelect: (id: string) => void
+}) {
+  const [query, setQuery] = useState("");
+  const [regionFilter, setRegionFilter] = useState("All");
 
-function RosterDrawerContent({ staff, area, onClose }: RosterProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("name");
-  
-  // Robust Filtering
-  const filteredStaff = staff.filter(p => {
-    const term = searchTerm.toLowerCase();
-    return (
-      (p.name && p.name.toLowerCase().includes(term)) ||
-      (p.role && p.role.toLowerCase().includes(term)) ||
-      (p.subcounty && p.subcounty.toLowerCase().includes(term))
-    );
-  });
+  const filtered = useMemo(() => {
+    return data.filter(d => {
+      const matchesSearch = d.name.toLowerCase().includes(query.toLowerCase());
+      const matchesRegion = regionFilter === "All" || d.region === regionFilter;
+      return matchesSearch && matchesRegion;
+    });
+  }, [data, query, regionFilter]);
 
-  // Safe Sorting
-  const sortedStaff = [...filteredStaff].sort((a, b) => {
-    const key = sortBy as keyof PersonnelEntry;
-    const valA = String(a[key] || "").toLowerCase();
-    const valB = String(b[key] || "").toLowerCase();
-    return valA.localeCompare(valB);
-  });
+  const grouped = useMemo(() => {
+    const groups: Record<string, DistrictNode[]> = {};
+    filtered.forEach(d => {
+      const key = regionFilter === "All" ? d.region : d.subRegion;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(d);
+    });
+    return groups;
+  }, [filtered, regionFilter]);
 
-  // Color Logic for Visual Scannability
-  const getRoleIndicator = (role: string | null | undefined) => {
-    const r = String(role).toLowerCase();
-    if (r.includes("health")) return "bg-rose-500";
-    if (r.includes("vht")) return "bg-emerald-500";
-    if (r.includes("chair") || r.includes("lead")) return "bg-blue-600";
-    if (r.includes("secretary") || r.includes("admin")) return "bg-purple-500";
-    return "bg-slate-400";
-  };
+  const maxCount = Math.max(...data.map(d => d.count), 1);
 
   return (
-    <>
-      {/* Drawer Header */}
-      <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              {area} Roster
-              <span className="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs font-bold">
-                {staff.length}
-              </span>
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">Authorized personnel list.</p>
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-gray-200 bg-white space-y-4 shrink-0">
+        <div>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-bold text-gray-900">Districts</h2>
+            <span className="text-xs font-medium bg-gray-100 px-2 py-1 rounded-full text-gray-600">
+              {filtered.length} Zones
+            </span>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-            aria-label="Close panel"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Search Input */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+          {["All", "Central", "Eastern", "Northern", "Western"].map(r => (
+            <button
+              key={r}
+              onClick={() => setRegionFilter(r)}
+              className={`
+                px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors
+                ${regionFilter === r
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+              `}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
         <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={16} />
-          <input 
-            type="text" 
-            placeholder="Search roster..." 
-            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
+          <input
+            type="text"
+            placeholder="Search districts..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
           />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Role Legend (Contextual Education) */}
-      <div className="px-6 py-3 bg-white border-b border-gray-100 flex gap-4 overflow-x-auto no-scrollbar">
-        <LegendItem color="bg-rose-500" label="Medical" />
-        <LegendItem color="bg-emerald-500" label="VHT" />
-        <LegendItem color="bg-blue-600" label="Leadership" />
-        <LegendItem color="bg-purple-500" label="Admin" />
-      </div>
-
-      {/* Roster List */}
-      <div className="flex-1 overflow-y-auto bg-white p-2">
-        {sortedStaff.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400 text-center px-6">
-            <Filter size={32} className="opacity-20 mb-3" />
-            <p className="text-sm font-medium">No personnel found</p>
-            <p className="text-xs mt-1">Try adjusting your search terms.</p>
-          </div>
+      <div className="flex-1 overflow-y-auto scroll-smooth">
+        {Object.entries(grouped).length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">No districts found.</div>
         ) : (
-          <div className="space-y-1">
-            {sortedStaff.map((p, idx) => (
-              <div 
-                key={idx} 
-                className="group flex gap-4 p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100"
-              >
-                {/* Visual Role Indicator */}
-                <div className="flex flex-col items-center gap-1 shrink-0 mt-1">
-                   <div className={`w-2 h-2 rounded-full ${getRoleIndicator(p.role)} shadow-sm`}></div>
-                   <div className="w-px h-full bg-gray-100 group-hover:bg-gray-200"></div>
+          <div className="pb-4">
+            {Object.entries(grouped).sort().map(([groupName, districts]) => (
+              <div key={groupName}>
+                <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm px-4 py-2 border-y border-gray-200/50">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{groupName}</span>
                 </div>
+                <ul className="divide-y divide-gray-100">
+                  {districts.map(d => (
+                    <li key={d.name}>
+                      <button
+                        onClick={() => onSelect(d.name)}
+                        className={`
+                          w-full text-left px-4 py-3 group transition-all duration-200 relative
+                          ${selectedId === d.name ? 'bg-indigo-50/50' : 'hover:bg-white'}
+                        `}
+                      >
+                        {selectedId === d.name && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600" />
+                        )}
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className={`text-sm font-semibold ${selectedId === d.name ? 'text-indigo-900' : 'text-gray-700'}`}>
+                            {d.name}
+                          </span>
+                          {d.count > 0 ? (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${selectedId === d.name ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-600'}`}>
+                              {d.count}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-300">Empty</span>
+                          )}
+                        </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-sm font-bold text-gray-900 truncate pr-2">{p.name}</h3>
-                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 rounded">{p.subcounty}</span>
-                  </div>
-                  
-                  {/* Role is hidden in column, but visible here in detail */}
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                    <Briefcase size={10} /> {p.role || "Unspecified Role"}
-                  </p>
-
-                  {/* Quick Actions Footer */}
-                  <div className="flex items-center gap-3 mt-3 pt-2 border-t border-gray-50 opacity-60 group-hover:opacity-100 transition-opacity">
-                    {p.phone ? (
-                      <a href={`tel:${p.phone}`} className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-blue-600 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm hover:shadow">
-                        <Phone size={10} /> Call
-                      </a>
-                    ) : (
-                      <span className="text-[10px] text-gray-300 select-none">No Phone</span>
-                    )}
-                    
-                    {p.email && (
-                      <a href={`mailto:${p.email}`} className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-blue-600 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm hover:shadow">
-                        <Mail size={10} /> Email
-                      </a>
-                    )}
-                  </div>
-                </div>
+                        <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${selectedId === d.name ? 'bg-indigo-500' : 'bg-gray-300 group-hover:bg-indigo-300'}`}
+                            style={{ width: `${(d.count / maxCount) * 100}%` }}
+                          />
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Footer Info */}
-      <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
-        <div className="inline-flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-blue-500 cursor-pointer transition-colors group">
-          <Info size={12} />
-          <span>Learn about District Hierarchy</span>
-          {/* Trigger for Contextual Diagram */}
-          
-
-[Image of Uganda health system structure]
-
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
 
-function LegendItem({ color, label }: { color: string, label: string }) {
+// --- Detail View Component (Responsive) ---
+
+function PersonnelDirectory({
+  district,
+  onClose,
+  isMobile
+}: {
+  district: DistrictNode,
+  onClose: () => void,
+  isMobile?: boolean
+}) {
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDirection>('asc');
+
+  const filteredStaff = useMemo(() => {
+    let result = (district.staff || []).filter(p => {
+      const q = search.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.subcounty.toLowerCase().includes(q) ||
+        (p.role || "").toLowerCase().includes(q)
+      );
+    });
+
+    return result.sort((a, b) => {
+      const valA = (a[sortKey] || "").toString().toLowerCase();
+      const valB = (b[sortKey] || "").toString().toLowerCase();
+      return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }, [district.staff, search, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
-      <div className={`w-2 h-2 rounded-full ${color}`}></div>
-      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+    <div className="flex flex-col h-full bg-white">
+      <div className="px-6 py-5 border-b border-gray-200 flex flex-col gap-4 bg-white shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {isMobile && (
+              <button
+                onClick={onClose}
+                className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{district.name} District</h1>
+              <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{district.region} Region</span>
+                <span className="text-gray-300">•</span>
+                <span>{filteredStaff.length} Active Personnel</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 border border-gray-200">
+              <Filter size={18} />
+            </button>
+            <button className="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 border border-gray-200">
+              <MoreHorizontal size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Find personnel by name, role, or subcounty..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto bg-gray-50/30">
+        {filteredStaff.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <Users size={32} className="mb-3 opacity-20" />
+            <p className="text-sm">No personnel match criteria.</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden md:block min-w-full inline-block align-middle">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <SortHeader label="Name" column="name" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} className="pl-6" />
+                    <SortHeader label="Subcounty" column="subcounty" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortHeader label="Role" column="role" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {filteredStaff.map((person, idx) => (
+                    <tr key={idx} className="hover:bg-indigo-50/30 transition-colors group">
+                      <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm">
+                        <div className="flex items-center">
+                          <AvatarInitials name={person.name} />
+                          <div className="ml-4">
+                            <div className="font-medium text-gray-900">{person.name}</div>
+                            {person.level && <div className="text-xs text-gray-500">{person.level}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {person.subcounty}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                          {person.role || "Officer"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <div className="flex flex-col gap-1">
+                          {person.phone && (
+                            <a href={`tel:${person.phone}`} className="flex items-center gap-1.5 text-gray-700 hover:text-indigo-600">
+                              <Phone size={12} /> {person.phone}
+                            </a>
+                          )}
+                          {person.email && (
+                            <a href={`mailto:${person.email}`} className="flex items-center gap-1.5 text-gray-500 hover:text-indigo-600">
+                              <Mail size={12} /> <span className="truncate max-w-[150px]">{person.email}</span>
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="md:hidden divide-y divide-gray-100 bg-white">
+              {filteredStaff.map((person, idx) => (
+                <li key={idx} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <AvatarInitials name={person.name} size="small" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">{person.name}</h3>
+                        <span className="text-[10px] font-medium bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                          {person.subcounty}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5 mb-2">{person.role || "Unspecified Role"}</p>
+
+                      <div className="flex gap-3 mt-2">
+                        {person.phone && (
+                          <a href={`tel:${person.phone}`} className="flex items-center gap-1 text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 hover:bg-gray-50">
+                            <Phone size={12} /> Call
+                          </a>
+                        )}
+                        {person.email && (
+                          <a href={`mailto:${person.email}`} className="flex items-center gap-1 text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 hover:bg-gray-50">
+                            <Mail size={12} /> Email
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Helper Components ---
+
+function SortHeader({
+  label,
+  column,
+  currentSort,
+  dir,
+  onToggle,
+  className = ""
+}: {
+  label: string,
+  column: SortKey,
+  currentSort: SortKey,
+  dir: SortDirection,
+  onToggle: (k: SortKey) => void,
+  className?: string
+}) {
+  const isActive = currentSort === column;
+  return (
+    <th scope="col" className={`px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider group cursor-pointer hover:bg-gray-100 transition-colors ${className}`} onClick={() => onToggle(column)}>
+      <div className="flex items-center gap-1">
+        {label}
+        <span className={`transition-opacity ${isActive ? 'opacity-100 text-indigo-600' : 'opacity-0 group-hover:opacity-50'}`}>
+          {isActive && dir === 'asc' ? <ArrowUp size={12} /> : isActive && dir === 'desc' ? <ArrowDown size={12} /> : <ArrowUpDown size={12} />}
+        </span>
+      </div>
+    </th>
+  );
+}
+
+function AvatarInitials({ name, size = "normal" }: { name: string, size?: "normal" | "small" }) {
+  const initials = name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+  const sizeClasses = size === "normal" ? "h-10 w-10 text-sm" : "h-8 w-8 text-xs";
+
+  return (
+    <div className={`${sizeClasses} rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 shrink-0 ring-1 ring-white shadow-sm`}>
+      {initials}
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center max-w-sm p-6">
+      <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 border border-gray-100 shadow-sm">
+        <MapPin size={28} className="text-gray-400" />
+      </div>
+      <h3 className="text-lg font-bold text-gray-900">Select a Deployment Zone</h3>
+      <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+        Select a district from the sidebar to view the roster of active personnel, contact details, and subcounty allocations.
+      </p>
     </div>
   );
 }

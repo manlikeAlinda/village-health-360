@@ -1,401 +1,417 @@
 "use client";
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Filter, Layers, Map as MapIcon,
   Droplets, Activity, Users, ChevronLeft, ChevronRight,
   Maximize2, Info, CheckCircle2, Calendar, AlertTriangle,
-  Play, Pause, Sliders, Menu, X
+  Play, Pause, Sliders, Menu, X, Heart, TrendingUp, DollarSign, Utensils, Wrench,
+  LucideIcon, Search, ChevronDown, Globe, MapPin, School, Home,
+  Download, Share2
 } from "lucide-react";
-import MapWrapper from "../components/dashboard/MapWrapper";
+
+// --- REAL DATA: Integrated from districts.json ---
+const DISTRICTS_DATA = {
+  "Central": {
+    "Kampala": ["Kampala City"],
+    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
+    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
+  },
+  "Eastern": {
+    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
+    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
+    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
+    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
+  },
+  "Northern": {
+    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
+    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
+    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
+    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
+  },
+  "Western": {
+    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
+    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
+    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
+    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
+  }
+};
+
 // --- Domain Configuration ---
-// Structured to demonstrate data taxonomy to investors
-const MAP_LAYERS = [
-  {
-    id: "composite",
-    label: "Composite Risk Model",
-    icon: Layers,
-    description: "Multi-variate risk stratification (WASH + Health + Poverty)",
-    color: "text-gray-900",
-    freshness: "Real-time"
-  },
-  {
-    id: "wash",
-    label: "WASH Infrastructure",
-    icon: Droplets,
-    description: "Functional status of boreholes & latrines",
-    color: "text-blue-500",
-    freshness: "Last 24h"
-  },
-  {
-    id: "health",
-    label: "Epidemiological Surveillance",
-    icon: Activity,
-    description: "Active disease vectors & immunization gaps",
-    color: "text-red-500",
-    freshness: "Live Stream"
-  },
-  {
-    id: "vulnerable",
-    label: "Vulnerability Index",
-    icon: Users,
-    description: "Household economic resilience scoring",
-    color: "text-purple-600",
-    freshness: "Weekly Sync"
-  },
-] as const;
-export default function GeospatialHub() {
-  const [activeLayer, setActiveLayer] = useState<string>("composite");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    const media = window.matchMedia('(max-width: 768px)');
-    return !media.matches;
+const PRIMARY_COLOR = "text-[#004AAD]";
+const PRIMARY_BG = "bg-[#004AAD]"; // Using the Deep Blue from design system
+const SECONDARY_BG = "bg-[#7c3aed]"; // Purple accent from screenshot for buttons
+
+// --- Helper Functions ---
+const getAllDistricts = () => {
+  const districts: string[] = [];
+  Object.values(DISTRICTS_DATA).forEach(region => {
+    Object.values(region).forEach(subRegionDistricts => {
+      districts.push(...subRegionDistricts);
+    });
   });
-  const sidebarRef = useRef<HTMLElement>(null);
+  return districts.sort();
+};
 
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 768px)');
-    const listener = (e: MediaQueryListEvent) => setIsSidebarOpen(!e.matches);
-    
-    media.addListener(listener);
-    return () => media.removeListener(listener);
-  }, []);
+const getSubcounties = (district: string | null) => {
+  if (!district) return [];
+  return [`${district} Central`, `${district} North`, `${district} South`, "Town Council"];
+};
 
-  useEffect(() => {
-    if (!isSidebarOpen) return;
-    interface ClickEvent extends MouseEvent {
-      target: EventTarget | null;
-    }
+// --- Components ---
 
-    const handleClickOutside = (event: ClickEvent): void => {
-      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
-        if (window.innerWidth <= 768) {
-          setIsSidebarOpen(false);
-        }
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [isSidebarOpen]);
+// 1. Map Component (Center Panel)
+const MapWrapper = ({ location }: { location: string }) => {
+  const mapQuery = useMemo(() => {
+    const baseLocation = location === "National" ? "Uganda" : `${location}, Uganda`;
+    return encodeURIComponent(baseLocation);
+  }, [location]);
 
-  const [isPlaying, setIsPlaying] = useState(false);
   return (
-    <div className="relative flex h-screen md:h-[calc(100vh-1rem)] bg-gray-50 overflow-hidden rounded-none md:rounded-xl border-none md:border md:border-gray-200 shadow-none md:shadow-2xl mx-0 md:mx-4 mb-0 md:mb-4 font-sans">
-     
-      {/* Mobile Menu Toggle Button */}
-      <button
-        onClick={() => setIsSidebarOpen(true)}
-        className="fixed top-4 right-4 z-50 p-3 bg-blue-600 text-white rounded-full shadow-lg md:hidden hover:bg-blue-700 transition-all active:scale-95"
-        aria-label="Open navigation menu"
-      >
-        <Menu size={24} />
-      </button>
-
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* 1. Control Plane (Sidebar)
-          Designed as a 'Mission Control' panel rather than simple navigation.
-      */}
-      <aside
-        ref={sidebarRef}
-        className={`
-          fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] z-50 overflow-hidden
-          md:relative md:z-30 md:translate-x-0 md:flex md:opacity-100
-          ${isSidebarOpen ? 'translate-x-0 w-80' : '-translate-x-full w-0 md:w-16'}
-          md:w-72
-        `}
-        aria-label="Geospatial Controls"
-      >
-        {/* Close button for Mobile */}
-        <button
-          onClick={() => setIsSidebarOpen(false)}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 md:hidden"
-          aria-label="Close menu"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Ergonomic Toggle for desktop */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-3 top-6 bg-white border border-gray-200 rounded-full p-1.5 shadow-sm text-gray-500 hover:text-blue-600 z-50 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:scale-105 transition-transform hidden md:block"
-          aria-label={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-        >
-          {isSidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-        </button>
-        <div className={`flex flex-col h-full ${!isSidebarOpen ? "hidden md:flex md:items-center md:pt-6" : ""}`}>
-         
-          {/* Header: System Identity */}
-          {isSidebarOpen && (
-            <div className="p-4 md:p-6 border-b border-gray-100 bg-gray-50/50">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2 text-lg tracking-tight">
-                <MapIcon size={20} className="text-blue-600" />
-                <span>Geospatial Intelligence</span>
-              </h2>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <p className="text-xs text-gray-500 font-medium font-mono">SYSTEM ONLINE | GULU NODE</p>
-              </div>
-            </div>
-          )}
-          {/* Scrollable Controls */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6 md:space-y-8">
-           
-            {/* A. Data Layer Selector */}
-            <section role="radiogroup" aria-labelledby="layer-label">
-              {isSidebarOpen && (
-                <div className="flex justify-between items-center mb-4">
-                   <label id="layer-label" className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                    Data Layer Configuration
-                  </label>
-                  <Sliders size={14} className="text-gray-400 cursor-pointer hover:text-gray-600" />
-                </div>
-              )}
-             
-              <div className="space-y-3">
-                {MAP_LAYERS.map((layer) => (
-                  <LayerOption
-                    key={layer.id}
-                    layer={layer}
-                    isActive={activeLayer === layer.id}
-                    onClick={() => setActiveLayer(layer.id)}
-                    collapsed={!isSidebarOpen}
-                  />
-                ))}
-              </div>
-            </section>
-            {/* B. Domain Context Injection
-                CRITICAL FOR INVESTORS: This demonstrates that the software is mapped
-                to real-world institutional frameworks, reducing adoption risk.
-            */}
-            {isSidebarOpen && activeLayer === 'health' && (
-              <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                <div className="flex items-center gap-2 mb-3">
-                  <Info size={14} className="text-blue-600" />
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                    System Alignment
-                  </label>
-                </div>
-                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-gray-600">
-                  <p className="mb-2">
-                    Surveillance data maps directly to the national referral hierarchy, ensuring VHT alerts reach the correct administrative level.
-                  </p>
-                  {/* VISUAL PROOF OF DOMAIN EXPERTISE */}
-                  <div className="rounded-lg overflow-hidden border border-blue-200 mt-2 opacity-90 hover:opacity-100 transition-opacity">
-                    <img 
-                      src="https://www.researchgate.net/publication/279181159/figure/fig1/AS:669282157490176@1536580709027/The-Uganda-Health-System-Structure-and-Levels-of-Government.png" 
-                      alt="Uganda health system structure" 
-                      className="w-full h-auto object-contain"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-             {isSidebarOpen && activeLayer === 'vulnerable' && (
-              <div className="animate-in fade-in slide-in-from-left-4 duration-500">
-                 <div className="flex items-center gap-2 mb-3">
-                  <Info size={14} className="text-purple-600" />
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                    Methodology
-                  </label>
-                </div>
-                <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 text-xs text-gray-600">
-                  <p className="mb-2">
-                    Risk scoring utilizes the standardized Household Vulnerability Assessment Tool (HVAT) to ensure donor compliance.
-                  </p>
-                  {/* VISUAL PROOF OF RIGOR */}
-                   <div className="rounded-lg overflow-hidden border border-purple-200 mt-2 opacity-90 hover:opacity-100 transition-opacity">
-                    <img 
-                      src="https://www.ashe.org/sites/default/files/2022-05/Hazard%20Vulnerability%20Assessment%20Tool%20Thumb_1.png" 
-                      alt="Household Vulnerability Assessment Tool" 
-                      className="w-full h-auto object-contain"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* C. Operational Context (Legend) */}
-            {isSidebarOpen && (
-              <div className="bg-gray-50 p-4 md:p-5 rounded-xl border border-gray-200">
-                <h4 className="text-xs font-bold text-gray-900 mb-4 uppercase tracking-wide">
-                  Active Symbology
-                </h4>
-                <LegendContent layerId={activeLayer} />
-              </div>
-            )}
-          </div>
-        </div>
-      </aside>
-      {/* 2. Visualization Canvas */}
-      <main className="flex-1 relative z-0 bg-slate-100">
-        <MapWrapper />
-       
-        {/* A. Heads-Up Display (HUD): High-Level Metrics */}
-        <div className="absolute top-4 md:top-6 right-4 md:right-6 flex flex-col items-end gap-3 z-10 pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-md p-3 md:p-4 rounded-xl shadow-lg border border-gray-200 max-w-xs pointer-events-auto w-full md:max-w-xs">
-            <h1 className="text-base md:text-lg font-bold text-gray-900 leading-tight">Gulu District</h1>
-            <div className="flex items-center gap-2 mt-1 mb-2 md:mb-3">
-              <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
-                UG-112
-              </span>
-              <span className="text-xs text-gray-500">
-                82,450 Households Mapped
-              </span>
-            </div>
-            <div className="flex gap-2 flex-col md:flex-row">
-              <button className="flex-1 bg-gray-900 text-white text-xs font-bold py-2 rounded-lg hover:bg-gray-800 transition shadow-sm">
-                Generate Report
-              </button>
-              <button className="flex-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg hover:bg-gray-50 transition shadow-sm">
-                Filter Region
-              </button>
-            </div>
-          </div>
-        </div>
-        {/* B. Temporal Control Bar (Time Series Analysis)
-            Demonstrates to investors that we handle historical data and forecasting.
-        */}
-        <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 w-full max-w-xl md:max-w-2xl px-2 md:px-4 z-10 pointer-events-auto">
-          <div className="bg-white/90 backdrop-blur-md border border-gray-200 p-2 rounded-2xl shadow-xl flex items-center gap-4">
-             <button
-               onClick={() => setIsPlaying(!isPlaying)}
-               className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition shadow-md shrink-0"
-             >
-               {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
-             </button>
-             
-             <div className="flex-1">
-               <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-                 <span>Jan 2024</span>
-                 <span className="text-blue-600">Current View: Oct 2024</span>
-                 <span>Dec 2024</span>
-               </div>
-               <div className="relative h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                 <div className="absolute top-0 left-0 h-full w-3/4 bg-blue-600 rounded-full"></div>
-               </div>
-             </div>
-             <div className="px-2 md:px-3 py-1 bg-gray-100 rounded-lg border border-gray-200 shrink-0">
-               <span className="text-xs font-mono font-medium text-gray-600">Q4</span>
-             </div>
-          </div>
-        </div>
-      </main>
+    <div className="w-full h-full bg-slate-100 relative overflow-hidden group">
+      <iframe
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        loading="lazy"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
+        src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+        title={`Map of ${location}`}
+      ></iframe>
+      <div className="absolute inset-0 pointer-events-none border border-black/5"></div>
     </div>
   );
-}
-// --- Component Architecture ---
-type MapLayer = typeof MAP_LAYERS[number];
-function LayerOption({ layer, isActive, onClick, collapsed }: { layer: MapLayer, isActive: boolean, onClick: () => void, collapsed: boolean }) {
-  const Icon = layer.icon;
- 
-  // Collapsed View: Icon Only (Tooltips implied)
-  if (collapsed) {
-    return (
-      <button
-        onClick={onClick}
-        className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center transition-all duration-200 ${
-          isActive ? "bg-blue-600 text-white shadow-md scale-110" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-        }`}
-      >
-        <Icon size={20} />
-      </button>
-    );
-  }
-  // Expanded View: Rich Information Card
+};
+
+// 2. Combobox Component (Left Panel)
+const FilterSelect = ({ label, options, value, onChange, disabled, placeholder }: any) => {
   return (
-    <button
-      onClick={onClick}
-      role="radio"
-      aria-checked={isActive}
-      className={`
-        group w-full flex items-start gap-3.5 p-3.5 rounded-xl text-left transition-all duration-200 border
-        ${isActive
-          ? "bg-white border-blue-600/30 shadow-md ring-1 ring-blue-500/20"
-          : "bg-transparent border-transparent hover:bg-gray-50 text-gray-500 hover:border-gray-200"
-        }
-      `}
-    >
-      <div className={`
-        p-2 rounded-lg shrink-0 transition-colors duration-200
-        ${isActive ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400 group-hover:text-gray-600"}
-      `}>
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className={`text-sm font-bold transition-colors ${isActive ? "text-gray-900" : "text-gray-600"}`}>
-            {layer.label}
-          </span>
-          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>}
-        </div>
-        <p className="text-xs text-gray-400 mt-0.5 font-medium truncate pr-2">
-          {layer.description}
-        </p>
-        <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-          <Calendar size={10} /> Sync: {layer.freshness}
+    <div className="mb-3">
+      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{label}</label>
+      <div className="relative">
+        <select
+          disabled={disabled}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#004AAD] focus:border-[#004AAD] block p-2.5 appearance-none ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white transition-colors'}`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((opt: string) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+          <ChevronDown size={14} />
         </div>
       </div>
-      {isActive && (
-        <CheckCircle2 size={18} className="ml-auto text-blue-600 self-center" />
-      )}
-    </button>
-  );
+    </div>
+  )
 }
-function LegendContent({ layerId }: { layerId: string }) {
-  // Strategic Switch: Demonstrates depth of data model to investors
-  switch (layerId) {
-    case 'wash':
-      return (
-        <div className="space-y-3">
-          <LegendItem color="bg-blue-500" label="Functional Borehole" count={1240} />
-          <LegendItem color="bg-orange-400" label="Requires Maintenance" count={85} />
-          <LegendItem color="bg-red-500" label="Critical Failure (<3 Days)" count={12} />
-        </div>
-      );
-    case 'health':
-      return (
-        <div className="space-y-3">
-          <LegendItem color="bg-red-100 border-red-500 border" label="Outbreak Zone (Cholera)" count={3} />
-          <LegendItem color="bg-purple-100 border-purple-500 border" label="High Maternal Risk" count={142} />
-          <LegendItem color="bg-green-500" label="VHT Active Coverage" count={89} />
-        </div>
-      );
-    default:
-      return (
-        <div className="space-y-3">
-          <LegendItem color="bg-gray-900" label="Household Cluster" />
-          <LegendItem color="bg-red-500" label="Priority Alert" />
-          <div className="h-px bg-gray-200 my-2" />
-          <p className="text-[10px] text-gray-400 italic">
-            *Composite view aggregates signals from Health, WASH, and Economic modules.
-          </p>
-        </div>
-      );
-  }
-}
-function LegendItem({ color, label, count }: { color: string, label: string, count?: number }) {
+
+// 3. Checkbox Group Component (Left Panel)
+const CheckboxGroup = ({ title, options, colorClass = "text-[#004AAD]" }: any) => (
+  <div className="mb-6">
+    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">{title}</h3>
+    <div className="space-y-2">
+      {options.map((opt: any) => (
+        <label key={opt.label} className="flex items-center space-x-2 cursor-pointer group">
+          <input type="checkbox" defaultChecked={opt.checked} className={`w-4 h-4 rounded border-gray-300 ${colorClass} focus:ring-[#004AAD]`} />
+          <span className="text-sm text-gray-600 group-hover:text-gray-900">{opt.label}</span>
+        </label>
+      ))}
+    </div>
+  </div>
+)
+
+// --- Main Component ---
+export default function GeospatialHub() {
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Map Layer State
+  const [mapLayers, setMapLayers] = useState({
+    households: true,
+    waterPoints: true,
+    healthFacilities: true,
+    schools: false,
+    latrines: false
+  });
+
+  const allDistricts = useMemo(() => getAllDistricts(), []);
+  const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
-        <span className={`w-3 h-3 rounded-full shadow-sm ${color}`} />
-        <span className="text-xs text-gray-600 font-medium">{label}</span>
+    <div className="min-h-screen bg-[#F7F8F9] font-sans text-slate-800 p-4 md:p-8 mt-16 flex flex-col h-screen overflow-hidden">
+
+      {/* 1. Executive Header */}
+      <header className="flex flex-col gap-6 border-b border-gray-200 pb-6 shrink-0">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Geospatial Hub</h1>
+            <p className="text-gray-500 font-medium mt-1">
+              Live operational map for <strong className="text-gray-900">{selectedDistrict || "National"}</strong>
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 text-sm shadow-sm transition-all">
+              <Download size={16} /> Export Map
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-[#004AAD] text-white font-bold rounded-lg hover:bg-blue-800 text-sm shadow-md transition-all">
+              <Share2 size={16} /> Share View
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. Main Map Layout */}
+      <div className="flex flex-1 overflow-hidden border border-gray-200 rounded-xl shadow-sm bg-white mt-4">
+
+        {/* 2.1 Left Panel: Data Filters */}
+        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-sm shrink-0 h-full overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="flex items-center gap-2">
+              <Filter size={18} className="text-[#004AAD]" />
+              <h2 className="font-bold text-gray-800 text-sm">Data Filters</h2>
+            </div>
+            <button className="text-gray-400 hover:text-gray-600"><ChevronLeft size={16} /></button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
+            {/* Location Hierarchy */}
+            <div className="mb-6 pb-6 border-b border-gray-100">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Location</h3>
+              <FilterSelect
+                label="District"
+                placeholder="Select District"
+                options={allDistricts}
+                value={selectedDistrict}
+                onChange={(val: string) => { setSelectedDistrict(val); setSelectedSubcounty(null); }}
+              />
+              <FilterSelect
+                label="Subcounty"
+                placeholder="Select Subcounty"
+                options={subcounties}
+                value={selectedSubcounty}
+                onChange={setSelectedSubcounty}
+                disabled={!selectedDistrict}
+              />
+              <FilterSelect label="Parish" placeholder="Select Parish" options={[]} disabled={true} />
+              <FilterSelect label="Village" placeholder="Select Village" options={[]} disabled={true} />
+            </div>
+
+            {/* Vulnerability Score */}
+            <CheckboxGroup
+              title="Vulnerability Score"
+              options={[
+                { label: "High Risk (Score 8-10)", checked: true },
+                { label: "Moderate (Score 5-7)", checked: false },
+                { label: "Low (Score 0-4)", checked: false }
+              ]}
+              colorClass="text-purple-600"
+            />
+
+            {/* Disease Risks */}
+            <CheckboxGroup
+              title="Disease Risks"
+              options={[
+                { label: "Malaria Hotspots", checked: true },
+                { label: "Diarrhea", checked: false },
+                { label: "Respiratory Infections", checked: false }
+              ]}
+            />
+
+            {/* Household Status */}
+            <CheckboxGroup
+              title="Household Status"
+              options={[
+                { label: "Poor WASH Status", checked: false },
+                { label: "Pregnant Member", checked: false },
+                { label: "Low Income (<$1/day)", checked: false }
+              ]}
+            />
+          </div>
+
+          {/* Apply Button Footer */}
+          <div className="p-4 border-t border-gray-100 bg-white">
+            <button className={`w-full py-3 rounded-lg text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity ${SECONDARY_BG}`}>
+              Apply Filters
+            </button>
+          </div>
+        </aside>
+
+        {/* 2.2 Center Panel: Operational Map */}
+        <main className="flex-1 relative bg-slate-200 flex flex-col min-w-0">
+          {/* Map Header / Controls */}
+          <div className="absolute top-4 right-4 z-10 flex gap-2">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-1 flex">
+              <button className="px-3 py-1.5 text-xs font-bold bg-[#004AAD] text-white rounded shadow-sm">Standard</button>
+              <button className="px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded">Satellite</button>
+            </div>
+          </div>
+
+          {/* Floating Layer Control (Top Right) */}
+          <div className="absolute top-16 right-4 z-10 bg-white/95 backdrop-blur rounded-xl border border-gray-200 shadow-lg p-3 w-48">
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Map Layers</h4>
+            <div className="space-y-1.5">
+              {[
+                { key: 'households', label: 'Households', color: 'bg-purple-500' },
+                { key: 'waterPoints', label: 'Water Points', color: 'bg-blue-500' },
+                { key: 'healthFacilities', label: 'Health Facilities', color: 'bg-orange-500' },
+                { key: 'schools', label: 'Schools', color: 'bg-yellow-500' },
+                { key: 'latrines', label: 'Latrines', color: 'bg-emerald-800' },
+              ].map((layer) => (
+                <label key={layer.key} className="flex items-center justify-between cursor-pointer group p-1 hover:bg-gray-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={mapLayers[layer.key as keyof typeof mapLayers]}
+                      onChange={() => setMapLayers(prev => ({ ...prev, [layer.key]: !prev[layer.key as keyof typeof mapLayers] }))}
+                      className="rounded border-gray-300 text-[#004AAD] focus:ring-[#004AAD] w-3.5 h-3.5"
+                    />
+                    <span className="text-xs font-medium text-gray-700">{layer.label}</span>
+                  </div>
+                  <span className={`w-2 h-2 rounded-full ${layer.color}`} />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Map Canvas */}
+          <div className="w-full h-full">
+            <MapWrapper location={selectedDistrict || "Gulu"} />
+          </div>
+
+          {/* Legend (Bottom Left) */}
+          <div className="absolute bottom-6 left-6 z-10 bg-white/95 backdrop-blur p-4 rounded-xl border border-gray-200 shadow-lg w-40">
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">Legend</h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
+                <span className="text-xs text-gray-600">Households</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+                <span className="text-xs text-gray-600">Water Points</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                <span className="text-xs text-gray-600">Health Facility</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                <span className="text-xs text-gray-600">Schools</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-800"></div>
+                <span className="text-xs text-gray-600">Latrines</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Zoom Controls (Simulated position based on screenshot) */}
+          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <button className="p-2 hover:bg-gray-50 border-b border-gray-100 text-gray-600">+</button>
+            <button className="p-2 hover:bg-gray-50 text-gray-600">-</button>
+          </div>
+        </main>
+
+        {/* 2.3 Right Panel: Quick Stats */}
+        <aside className="w-[300px] bg-white border-l border-gray-200 flex flex-col z-20 shadow-sm shrink-0 overflow-y-auto custom-scrollbar">
+          <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="font-bold text-gray-800 text-sm">Quick Stats (Visible Area)</h2>
+          </div>
+
+          <div className="p-5 space-y-6">
+            {/* Households Mapped */}
+            <div>
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Households Mapped</h3>
+              <div className="text-3xl font-extrabold text-gray-900 tracking-tight">1,240</div>
+            </div>
+
+            {/* WASH Coverage */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2">WASH Coverage</h3>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1.5 font-medium text-gray-700">
+                  <span>Access to Clean Water</span>
+                  <span>84%</span>
+                </div>
+                <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 w-[84%] rounded-full"></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1.5 font-medium text-gray-700">
+                  <span>Functional Latrines</span>
+                  <span>42%</span>
+                </div>
+                <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 w-[42%] rounded-full"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Critical Alerts */}
+            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+              <h3 className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-3 flex items-center gap-1">
+                Critical Alerts
+              </h3>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-red-900">Maternal Risk</div>
+                    <div className="text-[11px] text-red-700 leading-tight">12 households need follow up</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Activity size={14} className="text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-red-900">Child Malnutrition</div>
+                    <div className="text-[11px] text-red-700 leading-tight">Hotspot detected in Sector A</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Avg Distance */}
+            <div className="pt-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Avg. Distance to Facility</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <div className="p-1 bg-orange-100 rounded text-orange-600"><Heart size={12} /></div>
+                    Health Center
+                  </div>
+                  <span className="font-bold text-gray-900">4.2 km</span>
+                </div>
+                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <div className="p-1 bg-blue-100 rounded text-blue-600"><Droplets size={12} /></div>
+                    Water Point
+                  </div>
+                  <span className="font-bold text-green-600">0.8 km</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agri Data */}
+            <div className="p-4 bg-green-50/50 rounded-xl border border-green-100/50">
+              <h3 className="text-[10px] font-bold text-green-800 uppercase tracking-widest mb-2">Agri-Data</h3>
+              <div className="space-y-1">
+                <div className="text-xs text-gray-700">Projected Maize Yield: <span className="font-bold text-gray-900">High</span></div>
+                <div className="text-xs text-gray-700">Drought Risk: <span className="font-bold text-red-500">Low</span></div>
+              </div>
+            </div>
+
+          </div>
+        </aside>
+
       </div>
-      {count !== undefined && (
-        <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 px-1.5 rounded">
-          {count}
-        </span>
-      )}
     </div>
   );
 }

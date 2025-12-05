@@ -34,8 +34,8 @@ const DistrictPath = ({ id, title, d, isActive, onSelect, onHover, onLeave }: Di
       className={`
         cursor-pointer transition-all duration-300 ease-out vector-effect-non-scaling-stroke
         ${isActive 
-          ? "fill-blue-600 stroke-white stroke-[2px] z-10 opacity-100" 
-          : "fill-gray-200 stroke-white stroke-[1px] hover:fill-blue-400 hover:stroke-blue-200"
+          ? "fill-indigo-600 stroke-white stroke-[2px] z-10 opacity-100" 
+          : "fill-slate-200 stroke-white stroke-[1px] hover:fill-indigo-400 hover:stroke-indigo-200"
         }
       `}
     />
