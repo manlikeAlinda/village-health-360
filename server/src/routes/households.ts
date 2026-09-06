@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "../lib/firebase";
 import { ApiError } from "../middleware/errorHandler";
-import { requireAuth, requireMinRole, AuthedRequest } from "../middleware/auth";
+import { requireAuth, requireMinRole, AuthedRequest, isAtLeast } from "../middleware/auth";
 import { writeAuditLog, diffFields, snapshotFields } from "../lib/auditLog";
 import { Household } from "../types";
 
@@ -52,15 +52,16 @@ const householdInputSchema = z.object({
   history: z.array(visitRecordSchema).optional(),
 });
 
-// GET /api/households?district=&subcounty=&riskLevel=&search=
+// GET /api/households?district=&subcounty=&riskLevel=&search=&reviewStatus=
 router.get("/", async (req, res, next) => {
   try {
     let query: FirebaseFirestore.Query = db.collection(COLLECTION);
 
-    const { district, subcounty, riskLevel } = req.query;
+    const { district, subcounty, riskLevel, reviewStatus } = req.query;
     if (typeof district === "string" && district) query = query.where("district", "==", district);
     if (typeof subcounty === "string" && subcounty) query = query.where("subcounty", "==", subcounty);
     if (typeof riskLevel === "string" && riskLevel) query = query.where("riskLevel", "==", riskLevel);
+    if (typeof reviewStatus === "string" && reviewStatus) query = query.where("reviewStatus", "==", reviewStatus);
 
     const snapshot = await query.get();
     let households = snapshot.docs.map((doc) => doc.data() as Household);
@@ -98,6 +99,7 @@ router.post("/", requireMinRole("Field Agent"), async (req: AuthedRequest, res, 
     const parsed = householdInputSchema.parse(req.body);
     const ref = db.collection(COLLECTION).doc();
     const now = new Date().toISOString();
+    const autoApproved = isAtLeast(req.user!.role, "District Admin");
     const household: Household = {
       ...parsed,
       id: ref.id,
@@ -105,6 +107,8 @@ router.post("/", requireMinRole("Field Agent"), async (req: AuthedRequest, res, 
       createdBy: req.user!.uid,
       updatedAt: now,
       updatedBy: req.user!.uid,
+      reviewStatus: autoApproved ? "approved" : "pending",
+      ...(autoApproved ? { reviewedBy: req.user!.uid, reviewedByName: req.user!.name, reviewedAt: now } : {}),
     };
     await ref.set(household);
     await writeAuditLog({
@@ -129,10 +133,18 @@ router.put("/:id", requireMinRole("Field Agent"), async (req: AuthedRequest, res
     if (!existing.exists) throw new ApiError(404, `Household ${req.params.id} not found`);
     const before = existing.data() as Household;
 
+    const now = new Date().toISOString();
+    const autoApproved = isAtLeast(req.user!.role, "District Admin");
     const updated = {
       ...parsed,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
       updatedBy: req.user!.uid,
+      // The record changed, so it needs re-review — unless a supervisor made
+      // the edit themselves, in which case they're already signing off on it.
+      reviewStatus: autoApproved ? "approved" : "pending",
+      ...(autoApproved
+        ? { reviewedBy: req.user!.uid, reviewedByName: req.user!.name, reviewedAt: now }
+        : { reviewedBy: null, reviewedByName: null, reviewedAt: null, rejectionReason: null }),
     };
     await ref.update(updated);
     const fresh = await ref.get();
@@ -143,6 +155,49 @@ router.put("/:id", requireMinRole("Field Agent"), async (req: AuthedRequest, res
       entityId: req.params.id,
       diff: diffFields(before, parsed),
     });
+    res.json({ data: fresh.data() as Household });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/households/:id/review — District Admin or above: approve or reject a pending submission
+const reviewSchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  reason: z.string().optional(),
+});
+
+router.put("/:id/review", requireMinRole("District Admin"), async (req: AuthedRequest, res, next) => {
+  try {
+    const { decision, reason } = reviewSchema.parse(req.body);
+    if (decision === "rejected" && !reason) {
+      throw new ApiError(400, "A reason is required when rejecting a submission");
+    }
+
+    const ref = db.collection(COLLECTION).doc(req.params.id);
+    const existing = await ref.get();
+    if (!existing.exists) throw new ApiError(404, `Household ${req.params.id} not found`);
+    const before = existing.data() as Household;
+
+    const now = new Date().toISOString();
+    const update = {
+      reviewStatus: decision,
+      reviewedBy: req.user!.uid,
+      reviewedByName: req.user!.name,
+      reviewedAt: now,
+      rejectionReason: decision === "rejected" ? reason : null,
+    };
+    await ref.update(update);
+    const fresh = await ref.get();
+
+    await writeAuditLog({
+      actor: { uid: req.user!.uid, name: req.user!.name },
+      action: decision === "approved" ? "household.approve" : "household.reject",
+      entityType: "household",
+      entityId: req.params.id,
+      diff: diffFields(before, update),
+    });
+
     res.json({ data: fresh.data() as Household });
   } catch (err) {
     next(err);

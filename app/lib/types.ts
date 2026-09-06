@@ -66,9 +66,14 @@ export interface Household {
   createdBy: string;
   updatedAt: string;
   updatedBy: string;
+  reviewStatus: "pending" | "approved" | "rejected";
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
 }
 
-export type HouseholdInput = Omit<Household, "id" | "createdAt" | "createdBy" | "updatedAt" | "updatedBy">;
+export type HouseholdInput = Omit<Household, "id" | "createdAt" | "createdBy" | "updatedAt" | "updatedBy" | "reviewStatus" | "reviewedBy" | "reviewedByName" | "reviewedAt" | "rejectionReason">;
 
 export interface Personnel {
   name: string;

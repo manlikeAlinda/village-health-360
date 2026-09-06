@@ -53,6 +53,15 @@ export interface Household {
   createdBy: string;
   updatedAt: string;
   updatedBy: string;
+  // Data validation workflow: Field Agent/Partner submissions start "pending"
+  // and need a District Admin+ sign-off before they count as canonical (see
+  // reports.ts, which only includes "approved" records). District Admin+
+  // submissions are auto-approved since they already are the supervisor.
+  reviewStatus: "pending" | "approved" | "rejected";
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
 }
 
 // --- facilities/{id} — water points, health centers, schools, latrines ---

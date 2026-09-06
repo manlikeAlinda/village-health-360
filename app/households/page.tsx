@@ -7,13 +7,15 @@ import {
   MapPin, Droplets, Activity, X, MoreHorizontal,
   ChevronRight, AlertCircle, CalendarClock, Info,
   Save, AlertTriangle, Users, TrendingUp, ChevronDown,
-  Download, Share2, Loader2
+  Download, Share2, Loader2, ShieldCheck, ShieldX, Clock
 } from "lucide-react";
 import { useHouseholdsStore } from "../store/householdsStore";
 import { Household, HouseholdInput } from "../lib/types";
 import DemoDataBadge from "../components/ui/DemoDataBadge";
 import { getAllDistricts, getSubcounties, getDistrictCenter } from "../lib/adminData";
 import LocationPicker from "../components/ui/LocationPicker";
+import SyncStatusBar from "../components/ui/SyncStatusBar";
+import { useAuth } from "../components/providers/AuthProvider";
 
 // Filter Select Component
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
@@ -35,10 +37,15 @@ const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) 
   </div>
 );
 
+const SUPERVISOR_ROLES = ["Super Admin", "District Admin"];
+
 export default function HouseholdsPage() {
-  const { households, loading, error, fetchAll, remove } = useHouseholdsStore();
+  const { households, loading, error, fetchAll, remove, pendingIds, reviewHousehold } = useHouseholdsStore();
+  const { role } = useAuth();
+  const canReview = !!role && SUPERVISOR_ROLES.includes(role);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("All");
+  const [filterReview, setFilterReview] = useState("All");
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
 
@@ -48,16 +55,57 @@ export default function HouseholdsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Household | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isReviewing, setIsReviewing] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // --- Derived Data ---
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
 
-  // Server-side scoping by district/subcounty; search + risk filtered client-side below.
+  // Server-side scoping by district/subcounty/review status; search + risk filtered client-side below.
   useEffect(() => {
-    fetchAll({ district: selectedDistrict || undefined, subcounty: selectedSubcounty || undefined });
-  }, [selectedDistrict, selectedSubcounty, fetchAll]);
+    fetchAll({
+      district: selectedDistrict || undefined,
+      subcounty: selectedSubcounty || undefined,
+      reviewStatus: filterReview !== "All" ? filterReview : undefined,
+    });
+  }, [selectedDistrict, selectedSubcounty, filterReview, fetchAll]);
+
+  const handleApprove = async (hh: Household) => {
+    setIsReviewing(hh.id);
+    setReviewError(null);
+    try {
+      await reviewHousehold(hh.id, "approved");
+    } catch (err) {
+      setReviewError((err as Error).message);
+    } finally {
+      setIsReviewing(null);
+    }
+  };
+
+  const openRejectModal = (hh: Household) => {
+    setRejectTarget(hh);
+    setRejectReason("");
+    setReviewError(null);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget || !rejectReason.trim()) return;
+    setIsReviewing(rejectTarget.id);
+    setReviewError(null);
+    try {
+      await reviewHousehold(rejectTarget.id, "rejected", rejectReason.trim());
+      setRejectTarget(null);
+    } catch (err) {
+      setReviewError((err as Error).message);
+    } finally {
+      setIsReviewing(null);
+    }
+  };
 
   // --- Actions ---
   const handleEditClick = (hh: Household) => {
@@ -67,16 +115,26 @@ export default function HouseholdsPage() {
 
   const handleDeleteClick = (hh: Household) => {
     setSelectedHousehold(hh);
+    setDeleteError(null);
     setIsDeleteOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!selectedHousehold) return;
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       await remove(selectedHousehold.id);
       setIsDeleteOpen(false);
       setSelectedHousehold(null);
+    } catch (err) {
+      // Deletion isn't offline-queueable (unlike create/edit) — it needs to
+      // confirm against the current server state, not a stale local copy.
+      setDeleteError(
+        typeof navigator !== "undefined" && !navigator.onLine
+          ? "Can't delete while offline — this needs to reach the server."
+          : (err as Error).message
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -103,6 +161,16 @@ export default function HouseholdsPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 p-6 lg:p-10 mt-16">
+      {/* Warms the Leaflet chunk next/dynamic will need for the registration
+          modal's map-pin picker. A raw import() doesn't share next/dynamic's
+          own loader chunk, so this mounts the real dynamic component (hidden)
+          to force it through the same loading path — otherwise the first
+          "Register Household" click, if it happens offline, fails to fetch
+          the chunk and crashes the page. */}
+      <div className="hidden" aria-hidden="true">
+        <LocationPicker value={null} center={[0, 0]} onChange={() => {}} />
+      </div>
+
       {/* 1. Executive Header */}
       <header className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -127,6 +195,14 @@ export default function HouseholdsPage() {
           </div>
         </div>
       </header>
+
+      <SyncStatusBar />
+
+      {reviewError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle size={16} /> {reviewError}
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
@@ -173,12 +249,28 @@ export default function HouseholdsPage() {
               <ChevronDown size={14} />
             </div>
           </div>
-          {(selectedDistrict || selectedSubcounty || filterRisk !== "All") && (
+          <div className="relative min-w-[180px]">
+            <select
+              className="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm font-medium transition-colors hover:border-gray-400 focus:outline-none focus:border-[#004AAD]"
+              value={filterReview}
+              onChange={(e) => setFilterReview(e.target.value)}
+            >
+              <option value="All">All Review Statuses</option>
+              <option value="pending">Pending Review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+              <ChevronDown size={14} />
+            </div>
+          </div>
+          {(selectedDistrict || selectedSubcounty || filterRisk !== "All" || filterReview !== "All") && (
             <button
               onClick={() => {
                 setSelectedDistrict(null);
                 setSelectedSubcounty(null);
                 setFilterRisk("All");
+                setFilterReview("All");
               }}
               className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-800 transition"
             >
@@ -289,7 +381,24 @@ export default function HouseholdsPage() {
                           {hh.head.substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">{hh.head}</p>
+                          <p className="font-bold text-gray-900 text-sm flex items-center gap-2 flex-wrap">
+                            {hh.head}
+                            {pendingIds.has(hh.id) && (
+                              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                                Pending Sync
+                              </span>
+                            )}
+                            {hh.reviewStatus === "pending" && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                <Clock size={9} /> Pending Review
+                              </span>
+                            )}
+                            {hh.reviewStatus === "rejected" && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" title={hh.rejectionReason}>
+                                <ShieldX size={9} /> Rejected
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500 font-mono mt-0.5 flex items-center gap-2">
                             {hh.id}
                             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -346,6 +455,28 @@ export default function HouseholdsPage() {
                         >
                           View <ChevronRight size={12} />
                         </Link>
+
+                        {canReview && hh.reviewStatus === "pending" && (
+                          <>
+                            <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                            <button
+                              onClick={() => handleApprove(hh)}
+                              disabled={isReviewing === hh.id}
+                              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-40"
+                              title="Approve"
+                            >
+                              {isReviewing === hh.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                            </button>
+                            <button
+                              onClick={() => openRejectModal(hh)}
+                              disabled={isReviewing === hh.id}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                              title="Reject"
+                            >
+                              <ShieldX size={14} />
+                            </button>
+                          </>
+                        )}
 
                         <div className="h-4 w-px bg-gray-200 mx-1"></div>
 
@@ -416,6 +547,9 @@ export default function HouseholdsPage() {
               <p className="text-sm text-gray-500 mt-2">
                 You are about to permanently remove <span className="font-bold text-gray-800">{selectedHousehold.head}</span> ({selectedHousehold.id}) from the directory. This action cannot be undone.
               </p>
+              {deleteError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-3">{deleteError}</p>
+              )}
             </div>
             <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-center">
               <button
@@ -432,6 +566,48 @@ export default function HouseholdsPage() {
               >
                 {isDeleting ? <Loader2 size={14} className="animate-spin" /> : null}
                 {isDeleting ? "Deleting…" : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Submission Modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => !isReviewing && setRejectTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ShieldX size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 text-center">Reject Submission?</h3>
+              <p className="text-sm text-gray-500 mt-2 text-center">
+                Rejecting <span className="font-bold text-gray-800">{rejectTarget.head}</span> sends it back to the field agent for correction. A reason is required.
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Village name doesn't match the subcounty on file"
+                rows={3}
+                className="w-full mt-4 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+              />
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-center">
+              <button
+                onClick={() => setRejectTarget(null)}
+                disabled={!!isReviewing}
+                className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={!!isReviewing || !rejectReason.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm disabled:opacity-50"
+              >
+                {isReviewing ? <Loader2 size={14} className="animate-spin" /> : null}
+                {isReviewing ? "Rejecting…" : "Confirm Rejection"}
               </button>
             </div>
           </div>

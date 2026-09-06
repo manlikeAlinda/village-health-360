@@ -15,7 +15,7 @@ export interface AuthedRequest extends Request {
 // Role order used for "at least this level" checks (requireRole is still the
 // primary tool — this exists for the few places that need a ranking, e.g. "Field
 // Agent or above").
-const ROLE_RANK: Record<UserRole, number> = {
+export const ROLE_RANK: Record<UserRole, number> = {
   "Viewer": 0,
   "Partner": 1,
   "Field Agent": 2,
@@ -23,6 +23,10 @@ const ROLE_RANK: Record<UserRole, number> = {
   "District Admin": 4,
   "Super Admin": 5,
 };
+
+export function isAtLeast(role: UserRole, minRole: UserRole): boolean {
+  return ROLE_RANK[role] >= ROLE_RANK[minRole];
+}
 
 export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   try {

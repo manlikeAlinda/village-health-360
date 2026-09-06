@@ -247,8 +247,8 @@ function SettingsPageInner() {
 // --- Tab Components ---
 
 function classifyAction(action: string): 'success' | 'warning' | 'danger' | 'info' {
-  if (action.endsWith(".delete")) return "danger";
-  if (action.endsWith(".create") || action.endsWith(".invite")) return "success";
+  if (action.endsWith(".delete") || action.endsWith(".reject")) return "danger";
+  if (action.endsWith(".create") || action.endsWith(".invite") || action.endsWith(".approve")) return "success";
   if (action.endsWith(".update")) return "info";
   return "info";
 }
@@ -260,6 +260,13 @@ function describeAuditEntry(log: AuditLogEntry): string {
   }
   if (log.action.endsWith(".delete")) {
     return `Deleted ${log.entityType} ${log.entityId}`;
+  }
+  if (log.action.endsWith(".approve")) {
+    return `Approved ${log.entityType} ${log.entityId} — now counts as canonical data`;
+  }
+  if (log.action.endsWith(".reject")) {
+    const reason = log.diff?.rejectionReason?.after;
+    return `Rejected ${log.entityType} ${log.entityId}${reason ? `: ${reason}` : ""}`;
   }
   if (changedFields.length > 0) {
     return `Updated ${log.entityType} ${log.entityId} (${changedFields.join(", ")})`;

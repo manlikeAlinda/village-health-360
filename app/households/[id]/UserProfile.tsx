@@ -57,8 +57,30 @@ const ProfileHeader = ({ data }: { data: Household }) => {
               {data.head.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold text-gray-900 leading-tight">{data.head}</h1>
+              <h1 className="text-3xl font-extrabold text-gray-900 leading-tight flex items-center gap-3">
+                {data.head}
+                {data.reviewStatus === "pending" && (
+                  <span className="text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    Pending Review
+                  </span>
+                )}
+                {data.reviewStatus === "rejected" && (
+                  <span className="text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
+                    Rejected
+                  </span>
+                )}
+                {data.reviewStatus === "approved" && (
+                  <span className="text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Approved
+                  </span>
+                )}
+              </h1>
               <p className="text-base font-semibold text-gray-600 mb-2">Household Head | ID: {data.id}</p>
+              {data.reviewStatus === "rejected" && data.rejectionReason && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2 max-w-lg">
+                  <span className="font-bold">Rejection reason:</span> {data.rejectionReason}
+                </p>
+              )}
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
                 <span className="flex items-center gap-1">
                   <MapPin size={14} className="text-gray-400" /> {data.village}, {data.parish}

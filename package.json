@@ -12,6 +12,7 @@
     "@types/leaflet": "^1.9.21",
     "clsx": "^2.1.1",
     "firebase": "^11.10.0",
+    "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.555.0",
     "next": "16.0.5",

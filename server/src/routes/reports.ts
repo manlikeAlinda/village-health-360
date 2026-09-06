@@ -58,8 +58,10 @@ function periodRange(period: PeriodId, startDate?: string, endDate?: string): { 
   }
 }
 
+// Reports are official exports — they only include supervisor-approved
+// (canonical) household records, never still-pending field submissions.
 async function fetchHouseholds(district?: string, subcounty?: string): Promise<Household[]> {
-  let query: FirebaseFirestore.Query = db.collection("households");
+  let query: FirebaseFirestore.Query = db.collection("households").where("reviewStatus", "==", "approved");
   if (district) query = query.where("district", "==", district);
   if (subcounty) query = query.where("subcounty", "==", subcounty);
   const snapshot = await query.get();

@@ -4,6 +4,7 @@ import "./globals.css";
 import { LayoutProvider } from "./components/providers/LayoutProvider";
 import { AuthProvider } from "./components/providers/AuthProvider";
 import AuthGate from "./components/providers/AuthGate";
+import ServiceWorkerRegister from "./components/providers/ServiceWorkerRegister";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-brand-bg text-gray-900`}>
+        <ServiceWorkerRegister />
         <AuthProvider>
           <LayoutProvider>
             <AuthGate>{children}</AuthGate>
