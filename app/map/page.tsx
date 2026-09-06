@@ -1,87 +1,29 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Filter, Layers, Map as MapIcon,
   Droplets, Activity, Users, ChevronLeft, ChevronRight,
   Maximize2, Info, CheckCircle2, Calendar, AlertTriangle,
   Play, Pause, Sliders, Menu, X, Heart, TrendingUp, DollarSign, Utensils, Wrench,
   LucideIcon, Search, ChevronDown, Globe, MapPin, School, Home,
-  Download, Share2
+  Download, Share2, Loader2
 } from "lucide-react";
-
-// --- REAL DATA: Integrated from districts.json ---
-const DISTRICTS_DATA = {
-  "Central": {
-    "Kampala": ["Kampala City"],
-    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
-    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
-  },
-  "Eastern": {
-    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
-    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
-    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
-    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
-  },
-  "Northern": {
-    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
-    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
-    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
-    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
-  },
-  "Western": {
-    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
-    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
-    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
-    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
-  }
-};
+import Link from "next/link";
+import DemoDataBadge from "../components/ui/DemoDataBadge";
+import { getAllDistricts, getSubcounties, getDistrictCenter } from "../lib/adminData";
+import { useHouseholdsStore } from "../store/householdsStore";
+import { api } from "../lib/api";
+import type { Facility } from "../lib/types";
+import MapCanvasWrapper, { type MapLayers } from "./MapCanvasWrapper";
 
 // --- Domain Configuration ---
 const PRIMARY_COLOR = "text-[#004AAD]";
-const PRIMARY_BG = "bg-[#004AAD]"; // Using the Deep Blue from design system
-const SECONDARY_BG = "bg-[#7c3aed]"; // Purple accent from screenshot for buttons
+const PRIMARY_BG = "bg-[#004AAD]";
+const SECONDARY_BG = "bg-[#7c3aed]";
 
-// --- Helper Functions ---
-const getAllDistricts = () => {
-  const districts: string[] = [];
-  Object.values(DISTRICTS_DATA).forEach(region => {
-    Object.values(region).forEach(subRegionDistricts => {
-      districts.push(...subRegionDistricts);
-    });
-  });
-  return districts.sort();
-};
-
-const getSubcounties = (district: string | null) => {
-  if (!district) return [];
-  return [`${district} Central`, `${district} North`, `${district} South`, "Town Council"];
-};
+const SAFE_WATER_KEYWORDS = ["borehole", "tap", "protected", "safe"];
 
 // --- Components ---
-
-// 1. Map Component (Center Panel)
-const MapWrapper = ({ location }: { location: string }) => {
-  const mapQuery = useMemo(() => {
-    const baseLocation = location === "National" ? "Uganda" : `${location}, Uganda`;
-    return encodeURIComponent(baseLocation);
-  }, [location]);
-
-  return (
-    <div className="w-full h-full bg-slate-100 relative overflow-hidden group">
-      <iframe
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        loading="lazy"
-        allowFullScreen
-        referrerPolicy="no-referrer-when-downgrade"
-        src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-        title={`Map of ${location}`}
-      ></iframe>
-      <div className="absolute inset-0 pointer-events-none border border-black/5"></div>
-    </div>
-  );
-};
 
 // 2. Combobox Component (Left Panel)
 const FilterSelect = ({ label, options, value, onChange, disabled, placeholder }: any) => {
@@ -108,7 +50,7 @@ const FilterSelect = ({ label, options, value, onChange, disabled, placeholder }
   )
 }
 
-// 3. Checkbox Group Component (Left Panel)
+// 3. Checkbox Group Component (Left Panel) — decorative, not yet wired to the map (out of this pass's scope)
 const CheckboxGroup = ({ title, options, colorClass = "text-[#004AAD]" }: any) => (
   <div className="mb-6">
     <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">{title}</h3>
@@ -127,10 +69,8 @@ const CheckboxGroup = ({ title, options, colorClass = "text-[#004AAD]" }: any) =
 export default function GeospatialHub() {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Map Layer State
-  const [mapLayers, setMapLayers] = useState({
+  const [mapLayers, setMapLayers] = useState<MapLayers>({
     households: true,
     waterPoints: true,
     healthFacilities: true,
@@ -140,6 +80,40 @@ export default function GeospatialHub() {
 
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
+  const mapCenter = useMemo(() => getDistrictCenter(selectedDistrict), [selectedDistrict]);
+  const mapZoom = selectedDistrict ? 12 : 7;
+
+  const { households, loading: householdsLoading, fetchAll } = useHouseholdsStore();
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAll({ district: selectedDistrict || undefined, subcounty: selectedSubcounty || undefined });
+  }, [selectedDistrict, selectedSubcounty, fetchAll]);
+
+  useEffect(() => {
+    setFacilitiesLoading(true);
+    const params = selectedDistrict ? `?district=${encodeURIComponent(selectedDistrict)}` : "";
+    api.get<{ data: Facility[] }>(`/api/facilities${params}`)
+      .then(({ data }) => setFacilities(data))
+      .finally(() => setFacilitiesLoading(false));
+  }, [selectedDistrict]);
+
+  // --- Real Quick Stats, derived from the fetched households/facilities ---
+  const geolocatedHouseholds = households.filter((h) => h.lat != null && h.lng != null);
+  const safeWaterCount = households.filter((h) => SAFE_WATER_KEYWORDS.some((kw) => h.waterSource.toLowerCase().includes(kw)) && !h.waterSource.toLowerCase().includes("unsafe")).length;
+  const safeWaterPct = households.length > 0 ? Math.round((safeWaterCount / households.length) * 100) : null;
+
+  const latrineFacilities = facilities.filter((f) => f.type === "latrine");
+  const functionalLatrinePct = latrineFacilities.length > 0
+    ? Math.round((latrineFacilities.filter((f) => f.status === "functional").length / latrineFacilities.length) * 100)
+    : null;
+
+  const criticalHouseholds = households.filter((h) => h.riskLevel === "Critical").slice(0, 3);
+
+  const brokenFacilities = facilities.filter((f) => f.status === "broken");
+
+  const loading = householdsLoading || facilitiesLoading;
 
   return (
     <div className="min-h-screen bg-[#F7F8F9] font-sans text-slate-800 p-4 md:p-8 mt-16 flex flex-col h-screen overflow-hidden">
@@ -150,7 +124,7 @@ export default function GeospatialHub() {
           <div>
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Geospatial Hub</h1>
             <p className="text-gray-500 font-medium mt-1">
-              Live operational map for <strong className="text-gray-900">{selectedDistrict || "National"}</strong>
+              Live map for <strong className="text-gray-900">{selectedDistrict || "National"}</strong>
             </p>
           </div>
 
@@ -197,8 +171,13 @@ export default function GeospatialHub() {
                 onChange={setSelectedSubcounty}
                 disabled={!selectedDistrict}
               />
-              <FilterSelect label="Parish" placeholder="Select Parish" options={[]} disabled={true} />
-              <FilterSelect label="Village" placeholder="Select Village" options={[]} disabled={true} />
+              <FilterSelect label="Parish" placeholder="Not available yet" options={[]} disabled={true} />
+              <FilterSelect label="Village" placeholder="Not available yet" options={[]} disabled={true} />
+            </div>
+
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Other Filters</h3>
+              <DemoDataBadge label="Not wired yet" />
             </div>
 
             {/* Vulnerability Score */}
@@ -232,27 +211,12 @@ export default function GeospatialHub() {
               ]}
             />
           </div>
-
-          {/* Apply Button Footer */}
-          <div className="p-4 border-t border-gray-100 bg-white">
-            <button className={`w-full py-3 rounded-lg text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity ${SECONDARY_BG}`}>
-              Apply Filters
-            </button>
-          </div>
         </aside>
 
         {/* 2.2 Center Panel: Operational Map */}
         <main className="flex-1 relative bg-slate-200 flex flex-col min-w-0">
-          {/* Map Header / Controls */}
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-1 flex">
-              <button className="px-3 py-1.5 text-xs font-bold bg-[#004AAD] text-white rounded shadow-sm">Standard</button>
-              <button className="px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded">Satellite</button>
-            </div>
-          </div>
-
           {/* Floating Layer Control (Top Right) */}
-          <div className="absolute top-16 right-4 z-10 bg-white/95 backdrop-blur rounded-xl border border-gray-200 shadow-lg p-3 w-48">
+          <div className="absolute top-4 right-4 z-10 bg-white/95 backdrop-blur rounded-xl border border-gray-200 shadow-lg p-3 w-48">
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Map Layers</h4>
             <div className="space-y-1.5">
               {[
@@ -266,8 +230,8 @@ export default function GeospatialHub() {
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={mapLayers[layer.key as keyof typeof mapLayers]}
-                      onChange={() => setMapLayers(prev => ({ ...prev, [layer.key]: !prev[layer.key as keyof typeof mapLayers] }))}
+                      checked={mapLayers[layer.key as keyof MapLayers]}
+                      onChange={() => setMapLayers(prev => ({ ...prev, [layer.key]: !prev[layer.key as keyof MapLayers] }))}
                       className="rounded border-gray-300 text-[#004AAD] focus:ring-[#004AAD] w-3.5 h-3.5"
                     />
                     <span className="text-xs font-medium text-gray-700">{layer.label}</span>
@@ -279,21 +243,43 @@ export default function GeospatialHub() {
           </div>
 
           {/* Map Canvas */}
-          <div className="w-full h-full">
-            <MapWrapper location={selectedDistrict || "Gulu"} />
+          <div className="w-full h-full relative">
+            <MapCanvasWrapper
+              center={mapCenter}
+              zoom={mapZoom}
+              households={households}
+              facilities={facilities}
+              layers={mapLayers}
+            />
+            {loading && (
+              <div className="absolute top-4 left-4 z-[500] bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 text-xs text-gray-600">
+                <Loader2 size={14} className="animate-spin" /> Loading data…
+              </div>
+            )}
+            {!loading && geolocatedHouseholds.length === 0 && households.length === 0 && facilities.length === 0 && (
+              <div className="absolute inset-x-0 top-4 z-[500] flex justify-center pointer-events-none">
+                <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-lg border border-gray-200 shadow-sm text-xs text-gray-500">
+                  {selectedDistrict ? `No mapped data for ${selectedDistrict} yet.` : "Select a district to see mapped data, or register households with a location."}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Legend (Bottom Left) */}
-          <div className="absolute bottom-6 left-6 z-10 bg-white/95 backdrop-blur p-4 rounded-xl border border-gray-200 shadow-lg w-40">
+          <div className="absolute bottom-6 left-6 z-[500] bg-white/95 backdrop-blur p-4 rounded-xl border border-gray-200 shadow-lg w-44">
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 pb-2">Legend</h4>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
-                <span className="text-xs text-gray-600">Households</span>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#DC2626" }}></div>
+                <span className="text-xs text-gray-600">Household (Critical)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#22C55E" }}></div>
+                <span className="text-xs text-gray-600">Household (Low Risk)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                <span className="text-xs text-gray-600">Water Points</span>
+                <span className="text-xs text-gray-600">Water Point</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
@@ -301,33 +287,32 @@ export default function GeospatialHub() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
-                <span className="text-xs text-gray-600">Schools</span>
+                <span className="text-xs text-gray-600">School</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-800"></div>
-                <span className="text-xs text-gray-600">Latrines</span>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#065F46" }}></div>
+                <span className="text-xs text-gray-600">Latrine</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                <div className="w-2.5 h-0 border-t-2 border-dashed border-red-600"></div>
+                <span className="text-xs text-gray-600">Broken/Dashed = needs repair</span>
               </div>
             </div>
-          </div>
-
-          {/* Zoom Controls (Simulated position based on screenshot) */}
-          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <button className="p-2 hover:bg-gray-50 border-b border-gray-100 text-gray-600">+</button>
-            <button className="p-2 hover:bg-gray-50 text-gray-600">-</button>
           </div>
         </main>
 
         {/* 2.3 Right Panel: Quick Stats */}
         <aside className="w-[300px] bg-white border-l border-gray-200 flex flex-col z-20 shadow-sm shrink-0 overflow-y-auto custom-scrollbar">
-          <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="font-bold text-gray-800 text-sm">Quick Stats (Visible Area)</h2>
+          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
+            <h2 className="font-bold text-gray-800 text-sm">Quick Stats {selectedDistrict ? `— ${selectedDistrict}` : "(National)"}</h2>
           </div>
 
           <div className="p-5 space-y-6">
             {/* Households Mapped */}
             <div>
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Households Mapped</h3>
-              <div className="text-3xl font-extrabold text-gray-900 tracking-tight">1,240</div>
+              <div className="text-3xl font-extrabold text-gray-900 tracking-tight">{geolocatedHouseholds.length.toLocaleString()}</div>
+              <p className="text-[11px] text-gray-400 mt-1">of {households.length.toLocaleString()} registered in scope</p>
             </div>
 
             {/* WASH Coverage */}
@@ -337,75 +322,65 @@ export default function GeospatialHub() {
               <div>
                 <div className="flex justify-between text-xs mb-1.5 font-medium text-gray-700">
                   <span>Access to Clean Water</span>
-                  <span>84%</span>
+                  <span>{safeWaterPct != null ? `${safeWaterPct}%` : "—"}</span>
                 </div>
                 <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[84%] rounded-full"></div>
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${safeWaterPct ?? 0}%` }}></div>
                 </div>
+                {safeWaterPct == null && <p className="text-[10px] text-gray-400 mt-1">No households in scope yet</p>}
               </div>
 
               <div>
                 <div className="flex justify-between text-xs mb-1.5 font-medium text-gray-700">
                   <span>Functional Latrines</span>
-                  <span>42%</span>
+                  <span>{functionalLatrinePct != null ? `${functionalLatrinePct}%` : "—"}</span>
                 </div>
                 <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 w-[42%] rounded-full"></div>
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${functionalLatrinePct ?? 0}%` }}></div>
                 </div>
+                {functionalLatrinePct == null && <p className="text-[10px] text-gray-400 mt-1">No latrine facilities in scope yet</p>}
               </div>
             </div>
 
-            {/* Critical Alerts */}
+            {/* Critical Households (real) */}
             <div className="p-4 bg-red-50 rounded-xl border border-red-100">
               <h3 className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-3 flex items-center gap-1">
-                Critical Alerts
+                Critical Priority Households
               </h3>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-bold text-red-900">Maternal Risk</div>
-                    <div className="text-[11px] text-red-700 leading-tight">12 households need follow up</div>
-                  </div>
+              {criticalHouseholds.length > 0 ? (
+                <div className="space-y-3">
+                  {criticalHouseholds.map((h) => (
+                    <Link key={h.id} href={`/households/${h.id}`} className="flex gap-2 group">
+                      <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs font-bold text-red-900 group-hover:underline">{h.head}</div>
+                        <div className="text-[11px] text-red-700 leading-tight">{h.village}, {h.parish}</div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-                <div className="flex gap-2">
-                  <Activity size={14} className="text-red-600 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-bold text-red-900">Child Malnutrition</div>
-                    <div className="text-[11px] text-red-700 leading-tight">Hotspot detected in Sector A</div>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <p className="text-xs text-red-700/70">No critical-priority households in scope.</p>
+              )}
             </div>
 
-            {/* Avg Distance */}
+            {/* Broken infrastructure (real) */}
             <div className="pt-2">
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Avg. Distance to Facility</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <div className="p-1 bg-orange-100 rounded text-orange-600"><Heart size={12} /></div>
-                    Health Center
-                  </div>
-                  <span className="font-bold text-gray-900">4.2 km</span>
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Facilities Needing Repair</h3>
+              {brokenFacilities.length > 0 ? (
+                <div className="space-y-2">
+                  {brokenFacilities.slice(0, 4).map((f) => (
+                    <div key={f.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <div className="p-1 bg-red-100 rounded text-red-600"><Wrench size={12} /></div>
+                        <span className="text-xs">{f.name}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <div className="p-1 bg-blue-100 rounded text-blue-600"><Droplets size={12} /></div>
-                    Water Point
-                  </div>
-                  <span className="font-bold text-green-600">0.8 km</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Agri Data */}
-            <div className="p-4 bg-green-50/50 rounded-xl border border-green-100/50">
-              <h3 className="text-[10px] font-bold text-green-800 uppercase tracking-widest mb-2">Agri-Data</h3>
-              <div className="space-y-1">
-                <div className="text-xs text-gray-700">Projected Maize Yield: <span className="font-bold text-gray-900">High</span></div>
-                <div className="text-xs text-gray-700">Drought Risk: <span className="font-bold text-red-500">Low</span></div>
-              </div>
+              ) : (
+                <p className="text-xs text-gray-400">No broken facilities in scope.</p>
+              )}
             </div>
 
           </div>

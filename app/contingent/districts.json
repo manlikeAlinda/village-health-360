@@ -31,8 +31,7 @@
             "Mubende",
             "Mukono",
             "Nakaseke",
-            "Nakasongola",
-            "Kasanda"
+            "Nakasongola"
         ]
     },
     "Eastern": {
@@ -150,6 +149,7 @@
         ],
         "Tooro": [
             "Bundibugyo",
+            "Bunyangabu",
             "Kabarole",
             "Kamwenge",
             "Kitagwenda",

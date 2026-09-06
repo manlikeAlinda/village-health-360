@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayout } from "../providers/LayoutProvider";
+import { useAuth } from "../providers/AuthProvider";
 import {
   LayoutDashboard, Map as MapIcon, Users, Stethoscope, Droplets,
   Wallet, FileText, Settings, ChevronRight, X, ShieldCheck, LogOut,
@@ -39,14 +40,6 @@ interface UserProfile {
 
 // --- Configuration ---
 const SIDEBAR_WIDTH = "w-72"; // 288px
-
-// Current user (would come from auth context in production)
-const currentUser: UserProfile = {
-  name: "Dr. Sarah Akello",
-  email: "s.akello@village360.org",
-  role: "District Administrator",
-  initials: "SA",
-};
 
 // Navigation structure with groups
 const navigationGroups: NavGroup[] = [
@@ -126,7 +119,7 @@ const navigationGroups: NavGroup[] = [
 // Admin/Settings section (separate for role-based visibility)
 const adminItems: NavItem[] = [
   { name: "Settings", icon: Settings, path: "/settings", description: "System configuration" },
-  { name: "User Management", icon: UserCog, path: "/users", description: "Access control" },
+  { name: "User Management", icon: UserCog, path: "/settings?tab=users", description: "Access control" },
 ];
 
 // --- Utility Components ---
@@ -402,7 +395,15 @@ function SystemStatus() {
 export default function Sidebar() {
   const pathname = usePathname();
   const { isMobileMenuOpen, closeMobileMenu } = useLayout();
+  const { profile, signOutUser } = useAuth();
   const sidebarRef = useRef<HTMLElement>(null);
+
+  const currentUser: UserProfile = {
+    name: profile?.name || "Unknown User",
+    email: profile?.email || "",
+    role: profile?.role || "Viewer",
+    initials: (profile?.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
+  };
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -449,9 +450,8 @@ export default function Sidebar() {
   }, [isMobileMenuOpen]);
 
   const handleSignOut = useCallback(() => {
-    // Handle sign out logic
-    console.log('Signing out...');
-  }, []);
+    signOutUser();
+  }, [signOutUser]);
 
   return (
     <>

@@ -6,7 +6,6 @@ import {
   MapPin,
   Search,
   Phone,
-  Mail,
   ArrowLeft,
   Filter,
   MoreHorizontal,
@@ -20,78 +19,93 @@ import {
   ChevronDown,
   Briefcase,
   Building2,
-  UserCheck
+  UserCheck,
+  Loader2
 } from "lucide-react";
-import personnelDataRaw from "./personnel_data.json";
 import districtsData from "./districts.json";
+import { api } from "../lib/api";
+import type { Personnel } from "../lib/types";
 
 // --- Domain Types ---
-
-interface PersonnelEntry {
-  name: string;
-  phone: string;
-  email?: string;
-  role?: string;
-  level?: string;
-  district: string;
-  subcounty: string;
-  region: string;
-  constituency?: string;
-}
 
 interface DistrictNode {
   name: string;
   count: number;
   region: string;
   subRegion: string;
-  staff: PersonnelEntry[];
 }
 
 type SortDirection = 'asc' | 'desc';
-type SortKey = keyof PersonnelEntry;
+type SortKey = keyof Personnel;
 
-// --- Custom Hook / Data Logic ---
+// A single district can hold over a thousand personnel records (Kabale peaks
+// at 1,521) - fetch generously enough to cover any real district in one call
+// rather than building pagination UI for a case this pass doesn't need yet.
+const DISTRICT_ROSTER_LIMIT = 2000;
 
-function useDeploymentData() {
-  const data = useMemo(() => {
-    const rawStaff = (personnelDataRaw as unknown) as PersonnelEntry[];
+// --- Custom Hooks / Data Logic ---
+
+// Sidebar counts only - a lightweight ~95-row summary, not the full 40k+ roster.
+function useDeploymentSummary() {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<{ data: { district: string; count: number }[] }>("/api/personnel/summary")
+      .then(({ data }) => {
+        const byDistrict: Record<string, number> = {};
+        data.forEach((row) => { byDistrict[row.district.toUpperCase()] = row.count; });
+        setCounts(byDistrict);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const nodes = useMemo(() => {
     const districtHierarchy = (districtsData as unknown) as Record<string, Record<string, string[]>>;
-
-    const staffByDistrict: Record<string, PersonnelEntry[]> = {};
-    (rawStaff || []).forEach(p => {
-      const key = (p.district || "").toLowerCase().trim();
-      if (!staffByDistrict[key]) staffByDistrict[key] = [];
-      staffByDistrict[key].push(p);
-    });
-
-    const nodes: DistrictNode[] = [];
+    const result: DistrictNode[] = [];
     Object.entries(districtHierarchy || {}).forEach(([region, subRegions]: [string, any]) => {
       Object.entries(subRegions).forEach(([subRegion, districts]: [string, any]) => {
-        (districts as string[]).forEach(districtName => {
-          const key = districtName.toLowerCase().trim();
-          const staff = staffByDistrict[key] || [];
-          nodes.push({
+        (districts as string[]).forEach((districtName) => {
+          result.push({
             name: districtName,
             region,
             subRegion,
-            staff,
-            count: staff.length
+            count: counts[districtName.toUpperCase()] || 0,
           });
         });
       });
     });
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [counts]);
 
-    return nodes.sort((a, b) => a.name.localeCompare(b.name));
-  }, [personnelDataRaw, districtsData]);
+  return { nodes, loading };
+}
 
-  return data;
+// Full roster for one selected district, fetched on demand.
+function useDistrictRoster(districtName: string | null) {
+  const [staff, setStaff] = useState<Personnel[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!districtName) {
+      setStaff([]);
+      return;
+    }
+    setLoading(true);
+    api.get<{ data: Personnel[] }>(`/api/personnel?district=${encodeURIComponent(districtName)}&limit=${DISTRICT_ROSTER_LIMIT}`)
+      .then(({ data }) => setStaff(data))
+      .finally(() => setLoading(false));
+  }, [districtName]);
+
+  return { staff, loading };
 }
 
 // --- Main Layout Component ---
 
 export default function ContingentPage() {
-  const districts = useDeploymentData();
+  const { nodes: districts, loading: summaryLoading } = useDeploymentSummary();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { staff: selectedStaff, loading: rosterLoading } = useDistrictRoster(selectedId);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && setSelectedId(null);
@@ -207,6 +221,8 @@ export default function ContingentPage() {
               <div className="h-full w-full hidden md:block">
                 <PersonnelDirectory
                   district={selectedDistrictData}
+                  staff={selectedStaff}
+                  loading={rosterLoading}
                   onClose={() => setSelectedId(null)}
                 />
               </div>
@@ -227,6 +243,8 @@ export default function ContingentPage() {
               {selectedDistrictData && (
                 <PersonnelDirectory
                   district={selectedDistrictData}
+                  staff={selectedStaff}
+                  loading={rosterLoading}
                   onClose={() => setSelectedId(null)}
                   isMobile
                 />
@@ -381,10 +399,14 @@ function DistrictSidebar({
 
 function PersonnelDirectory({
   district,
+  staff,
+  loading,
   onClose,
   isMobile
 }: {
   district: DistrictNode,
+  staff: Personnel[],
+  loading: boolean,
   onClose: () => void,
   isMobile?: boolean
 }) {
@@ -393,12 +415,11 @@ function PersonnelDirectory({
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
 
   const filteredStaff = useMemo(() => {
-    let result = (district.staff || []).filter(p => {
+    let result = (staff || []).filter(p => {
       const q = search.toLowerCase();
       return (
         p.name.toLowerCase().includes(q) ||
-        p.subcounty.toLowerCase().includes(q) ||
-        (p.role || "").toLowerCase().includes(q)
+        (p.subcounty || "").toLowerCase().includes(q)
       );
     });
 
@@ -407,7 +428,7 @@ function PersonnelDirectory({
       const valB = (b[sortKey] || "").toString().toLowerCase();
       return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
-  }, [district.staff, search, sortKey, sortDir]);
+  }, [staff, search, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -454,7 +475,7 @@ function PersonnelDirectory({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
-            placeholder="Find personnel by name, role, or subcounty..."
+            placeholder="Find personnel by name or subcounty..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
@@ -463,7 +484,12 @@ function PersonnelDirectory({
       </div>
 
       <div className="flex-1 overflow-y-auto bg-gray-50/30">
-        {filteredStaff.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <Loader2 size={28} className="animate-spin mb-3" />
+            <p className="text-sm">Loading roster…</p>
+          </div>
+        ) : filteredStaff.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
             <Users size={32} className="mb-3 opacity-20" />
             <p className="text-sm">No personnel match criteria.</p>
@@ -476,7 +502,6 @@ function PersonnelDirectory({
                   <tr>
                     <SortHeader label="Name" column="name" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} className="pl-6" />
                     <SortHeader label="Subcounty" column="subcounty" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} />
-                    <SortHeader label="Role" column="role" currentSort={sortKey} dir={sortDir} onToggle={toggleSort} />
                     <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
                   </tr>
                 </thead>
@@ -488,31 +513,18 @@ function PersonnelDirectory({
                           <AvatarInitials name={person.name} />
                           <div className="ml-4">
                             <div className="font-medium text-gray-900">{person.name}</div>
-                            {person.level && <div className="text-xs text-gray-500">{person.level}</div>}
                           </div>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {person.subcounty}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm">
-                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                          {person.role || "Officer"}
-                        </span>
+                        {person.subcounty || "—"}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        <div className="flex flex-col gap-1">
-                          {person.phone && (
-                            <a href={`tel:${person.phone}`} className="flex items-center gap-1.5 text-gray-700 hover:text-indigo-600">
-                              <Phone size={12} /> {person.phone}
-                            </a>
-                          )}
-                          {person.email && (
-                            <a href={`mailto:${person.email}`} className="flex items-center gap-1.5 text-gray-500 hover:text-indigo-600">
-                              <Mail size={12} /> <span className="truncate max-w-[150px]">{person.email}</span>
-                            </a>
-                          )}
-                        </div>
+                        {person.phone && (
+                          <a href={`tel:${person.phone}`} className="flex items-center gap-1.5 text-gray-700 hover:text-indigo-600">
+                            <Phone size={12} /> {person.phone}
+                          </a>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -529,20 +541,14 @@ function PersonnelDirectory({
                       <div className="flex justify-between items-start">
                         <h3 className="text-sm font-semibold text-gray-900 truncate">{person.name}</h3>
                         <span className="text-[10px] font-medium bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                          {person.subcounty}
+                          {person.subcounty || "—"}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5 mb-2">{person.role || "Unspecified Role"}</p>
 
                       <div className="flex gap-3 mt-2">
                         {person.phone && (
                           <a href={`tel:${person.phone}`} className="flex items-center gap-1 text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 hover:bg-gray-50">
                             <Phone size={12} /> Call
-                          </a>
-                        )}
-                        {person.email && (
-                          <a href={`mailto:${person.email}`} className="flex items-center gap-1 text-xs font-medium text-gray-700 border border-gray-200 rounded px-2 py-1 hover:bg-gray-50">
-                            <Mail size={12} /> Email
                           </a>
                         )}
                       </div>

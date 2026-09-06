@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   FileText, FileSpreadsheet, Download, Filter,
   Calendar, CheckCircle2, FileBarChart, Presentation,
@@ -8,100 +8,63 @@ import {
   MapPin, Globe, ShieldCheck, PieChart, ChevronDown, X, Loader2,
   Share2, FolderOpen, TrendingUp
 } from "lucide-react";
-
-// --- REAL DATA: Integrated from districts.json ---
-const DISTRICTS_DATA = {
-  "Central": {
-    "Kampala": ["Kampala City"],
-    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
-    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
-  },
-  "Eastern": {
-    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
-    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
-    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
-    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
-  },
-  "Northern": {
-    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
-    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
-    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
-    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
-  },
-  "Western": {
-    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
-    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
-    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
-    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
-  }
-};
-
-// --- Helper Functions ---
-const getAllDistricts = () => {
-  const districts: string[] = [];
-  Object.values(DISTRICTS_DATA).forEach(region => {
-    Object.values(region).forEach(subRegionDistricts => {
-      districts.push(...subRegionDistricts);
-    });
-  });
-  return districts.sort();
-};
-
-const getSubcounties = (district: string | null) => {
-  if (!district) return [];
-  return [`${district} Central`, `${district} North`, `${district} South`, "Town Council"];
-};
-
-// --- Mock Data ---
+import { getAllDistricts, getSubcounties } from "../lib/adminData";
+import { api } from "../lib/api";
+import type { ReportJob, ReportTemplateId } from "../lib/types";
 
 const reportTemplates = [
   {
     id: "R-01",
+    templateId: "health_status" as ReportTemplateId,
     title: "Monthly Health Status",
-    desc: "Aggregated vaccination rates, maternal health stats, and disease incidence trends.",
+    desc: "Household risk levels and health status, scoped to a district/subcounty and period.",
     sector: "Health",
     intent: "brand",
-    formats: ["PDF", "Excel"]
+    formats: ["PDF"],
+    disabled: false,
   },
   {
     id: "R-02",
+    templateId: "wash_audit" as ReportTemplateId,
     title: "WASH Infrastructure Audit",
-    desc: "Operational status of boreholes, latrines, and water points by sub-county.",
+    desc: "Operational status of boreholes, latrines, and water points by district.",
     sector: "WASH",
     intent: "warning",
-    formats: ["Excel", "CSV"]
+    formats: ["PDF"],
+    disabled: false,
   },
   {
     id: "R-03",
+    templateId: "vulnerability_index" as ReportTemplateId,
     title: "Vulnerability Index",
-    desc: "Targeting list for households classified as 'Critical Risk' or 'High Priority'.",
+    desc: "Targeting list for households classified as Critical or High risk.",
     sector: "General",
     intent: "brand",
-    formats: ["PDF", "Excel"]
+    formats: ["PDF"],
+    disabled: false,
   },
   {
     id: "R-05",
+    templateId: null,
     title: "Agri-Yield Forecast",
     desc: "Seasonal crop production estimates vs. targets with input gap analysis.",
     sector: "Agriculture",
     intent: "success",
-    formats: ["Excel"]
+    formats: ["Excel"],
+    disabled: true,
+    disabledReason: "No agriculture data source exists in the app yet.",
   },
   {
     id: "R-04",
+    templateId: null,
     title: "Donor Impact Deck",
     desc: "High-level visual summary of quarterly outcomes for external stakeholders.",
     sector: "Donor",
     intent: "neutral",
-    formats: ["PPT"]
+    formats: ["PPT"],
+    disabled: true,
+    disabledReason: "No donor-reporting data model exists in the app yet.",
   },
-];
-
-const recentReports = [
-  { name: "Health_Nov2025_Final.pdf", date: "Today, 10:30 AM", user: "Dr. Laker J.", size: "2.4 MB", status: "Ready" },
-  { name: "WASH_Audit_Q3_Draft.xlsx", date: "Yesterday, 4:15 PM", user: "John O.", size: "850 KB", status: "Ready" },
-  { name: "Beneficiary_List_Omoro.csv", date: "Nov 28, 2025", user: "System", size: "12.4 MB", status: "Processing" },
-  { name: "Yield_Forecast_v2.xlsx", date: "Nov 27, 2025", user: "Admin", size: "450 KB", status: "Failed" },
 ];
 
 // --- Types ---
@@ -112,8 +75,13 @@ type ReportConfig = {
   period: string;
   startDate: string;
   endDate: string;
-  features: string[];
 };
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // Filter Select Component
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
@@ -162,12 +130,28 @@ export default function ReportsPage() {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
 
+  const [history, setHistory] = useState<ReportJob[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
 
+  const loadHistory = () => {
+    setHistoryLoading(true);
+    api.get<{ data: ReportJob[] }>("/api/reports")
+      .then(({ data }) => setHistory(data))
+      .finally(() => setHistoryLoading(false));
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
   const openNewReportModal = (templateId?: string) => {
-    setSelectedTemplateId(templateId || reportTemplates[0].id);
+    const target = reportTemplates.find((t) => t.id === templateId);
+    if (target?.disabled) return;
+    setSelectedTemplateId(templateId || reportTemplates.find((t) => !t.disabled)?.id || reportTemplates[0].id);
     setIsModalOpen(true);
   };
 
@@ -265,7 +249,11 @@ export default function ReportsPage() {
             <div
               key={report.id}
               onClick={() => openNewReportModal(report.id)}
-              className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+              className={`bg-white p-6 rounded-2xl border shadow-sm transition-all group ${
+                report.disabled
+                  ? "border-gray-100 opacity-60 cursor-not-allowed"
+                  : "border-gray-200 hover:shadow-md cursor-pointer"
+              }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-3 rounded-xl ${report.intent === 'brand' ? 'bg-indigo-50 text-indigo-600' :
@@ -277,7 +265,7 @@ export default function ReportsPage() {
                     report.formats.includes("Excel") ? <FileSpreadsheet size={20} /> :
                       <FileBarChart size={20} />}
                 </div>
-                <Badge intent={report.intent}>{report.sector}</Badge>
+                <Badge intent={report.disabled ? "neutral" : report.intent}>{report.sector}</Badge>
               </div>
 
               <div className="flex-1">
@@ -287,6 +275,11 @@ export default function ReportsPage() {
                 <p className="text-sm text-gray-500 leading-relaxed">
                   {report.desc}
                 </p>
+                {report.disabled && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 mt-3 flex items-center gap-1.5">
+                    <AlertCircle size={12} /> Not available — {report.disabledReason}
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 pt-4 border-t border-gray-100 flex gap-2">
@@ -306,60 +299,68 @@ export default function ReportsPage() {
 
       {/* 4. Recent Activity */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Download History</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Generation History</h2>
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-gray-400" />
-              <h3 className="font-semibold text-gray-900 text-sm">Recent Exports</h3>
+              <h3 className="font-semibold text-gray-900 text-sm">Recent Generation Attempts</h3>
             </div>
-            <button className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
-              View Audit Log
-            </button>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {recentReports.map((file, i) => (
-              <div key={i} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 transition-colors group">
+          {historyLoading ? (
+            <div className="flex justify-center py-10"><Loader2 size={22} className="animate-spin text-indigo-500" /></div>
+          ) : history.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-gray-400">No reports generated yet.</div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {history.map((job) => (
+                <div key={job.id} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 transition-colors group">
 
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 shrink-0">
-                    <File size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                      {file.name}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
-                      <span className="flex items-center gap-1"><Calendar size={12} /> {file.date}</span>
-                      <span className="hidden sm:inline">•</span>
-                      <span>By {file.user}</span>
-                      <span className="hidden sm:inline">•</span>
-                      <span className="font-mono">{file.size}</span>
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 shrink-0">
+                      <File size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                        {job.status === "ready" ? job.fileName : `${job.templateName} — generation failed`}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
+                        <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(job.createdAt).toLocaleString()}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>By {job.requestedByName}</span>
+                        {job.status === "ready" && job.recordCount != null && (
+                          <>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="font-mono">{job.recordCount} records</span>
+                          </>
+                        )}
+                      </div>
+                      {job.status === "failed" && job.errorMessage && (
+                        <p className="text-xs text-red-600 mt-1">{job.errorMessage}</p>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-14 sm:pl-0">
-                  <StatusBadge status={file.status} />
+                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pl-14 sm:pl-0">
+                    <StatusBadge status={job.status} />
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      disabled={file.status !== "Ready"}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                      title="Download Again"
-                    >
-                      <Download size={18} />
-                    </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                      <MoreHorizontal size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={job.status !== "ready"}
+                        onClick={() => api.downloadFile(`/api/reports/${job.id}/redownload`)}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                        title="Download Again"
+                      >
+                        <Download size={18} />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -369,6 +370,7 @@ export default function ReportsPage() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           initialTemplateId={selectedTemplateId}
+          onGenerated={loadHistory}
         />
       )}
 
@@ -379,17 +381,15 @@ export default function ReportsPage() {
 // --- Sub-Components ---
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "Ready") {
+  if (status === "ready") {
     return <Badge intent="success" size="sm"><CheckCircle2 size={10} className="mr-1" /> READY</Badge>;
-  }
-  if (status === "Processing") {
-    return <Badge intent="brand" size="sm"><Loader2 size={10} className="mr-1 animate-spin" /> GENERATING</Badge>;
   }
   return <Badge intent="danger" size="sm"><AlertCircle size={10} className="mr-1" /> FAILED</Badge>;
 }
 
-function ReportGeneratorModal({ isOpen, onClose, initialTemplateId }: { isOpen: boolean; onClose: () => void; initialTemplateId: string | null }) {
+function ReportGeneratorModal({ isOpen, onClose, initialTemplateId, onGenerated }: { isOpen: boolean; onClose: () => void; initialTemplateId: string | null; onGenerated: () => void }) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const [config, setConfig] = useState<ReportConfig>({
     district: "",
@@ -397,25 +397,34 @@ function ReportGeneratorModal({ isOpen, onClose, initialTemplateId }: { isOpen: 
     period: "last_30_days",
     startDate: "",
     endDate: "",
-    features: ["compliance_check"],
   });
 
   const selectedTemplate = reportTemplates.find(t => t.id === initialTemplateId) || reportTemplates[0];
   const availableSubcounties = useMemo(() => getSubcounties(config.district || null), [config.district]);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (!selectedTemplate.templateId) return;
     setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
+    setGenerateError(null);
+    try {
+      await api.downloadFile("/api/reports/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          templateId: selectedTemplate.templateId,
+          district: config.district || undefined,
+          subcounty: config.subcounty || undefined,
+          period: config.period,
+          startDate: config.period === "custom" ? config.startDate : undefined,
+          endDate: config.period === "custom" ? config.endDate : undefined,
+        }),
+      });
+      onGenerated();
       onClose();
-    }, 2000);
-  };
-
-  const toggleFeature = (feature: string) => {
-    if (config.features.includes(feature)) {
-      setConfig({ ...config, features: config.features.filter(f => f !== feature) });
-    } else {
-      setConfig({ ...config, features: [...config.features, feature] });
+    } catch (err) {
+      setGenerateError((err as Error).message);
+      onGenerated(); // the failed attempt is now in history too
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -510,16 +519,32 @@ function ReportGeneratorModal({ isOpen, onClose, initialTemplateId }: { isOpen: 
                 <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100 animate-in slide-in-from-top-2">
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">Start Date</label>
-                    <input type="date" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-sm" />
+                    <input
+                      type="date"
+                      value={config.startDate}
+                      onChange={(e) => setConfig({ ...config, startDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-sm"
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">End Date</label>
-                    <input type="date" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-sm" />
+                    <input
+                      type="date"
+                      value={config.endDate}
+                      onChange={(e) => setConfig({ ...config, endDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-sm"
+                    />
                   </div>
                 </div>
               )}
             </div>
           </div>
+
+          {generateError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+              <AlertCircle size={14} /> {generateError}
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
@@ -532,7 +557,7 @@ function ReportGeneratorModal({ isOpen, onClose, initialTemplateId }: { isOpen: 
           </button>
           <button
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !selectedTemplate.templateId}
             className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isGenerating ? (

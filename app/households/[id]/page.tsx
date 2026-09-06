@@ -1,21 +1,45 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import UserProfile from "./UserProfile";
+import { Household } from "../../lib/types";
+import { useHouseholdsStore } from "../../store/householdsStore";
 
-// 1. Define the list of IDs to pre-render
-export async function generateStaticParams() {
-  return [
-    { id: "HH-GUL-001" },
-    { id: "HH-GUL-002" },
-    { id: "HH-GUL-003" },
-    { id: "HH-GUL-004" },
-    { id: "HH-GUL-005" },
-    { id: "HH-8291" },
-  ];
-}
+export default function Page() {
+  const { id } = useParams<{ id: string }>();
+  const { fetchOne } = useHouseholdsStore();
+  const [household, setHousehold] = useState<Household | null | undefined>(undefined);
 
-// 2. The Page Component receives 'params' automatically
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  // 3. We extract the ID and pass it to the Client Component
-  const { id } = await params;
+  useEffect(() => {
+    let cancelled = false;
+    setHousehold(undefined);
+    fetchOne(id).then((result) => {
+      if (!cancelled) setHousehold(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, fetchOne]);
 
-  return <UserProfile id={id} />;
+  if (household === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <Loader2 size={28} className="animate-spin text-blue-500 mb-3" />
+        <p className="text-gray-500 text-sm">Loading household profile…</p>
+      </div>
+    );
+  }
+
+  if (household === null) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <h1 className="text-2xl font-bold text-gray-900">Household Not Found</h1>
+        <p className="text-gray-500 mt-2">No record exists for ID: <span className="font-mono">{id}</span></p>
+      </div>
+    );
+  }
+
+  return <UserProfile household={household} />;
 }

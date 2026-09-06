@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Settings, Users, Database, Globe, Trash2, PlusCircle, Check, X,
   Bell, Search, Zap, Loader2, Shield, Key, Mail, Clock, Eye, EyeOff,
@@ -10,6 +11,10 @@ import {
   type LucideIcon, Save, RotateCcw, ExternalLink, Copy, Palette,
   Languages, MapPin, Building2, UserCog, ShieldCheck, Activity
 } from "lucide-react";
+import DemoDataBadge from "../components/ui/DemoDataBadge";
+import { api, ApiError } from "../lib/api";
+import { useAuth } from "../components/providers/AuthProvider";
+import type { AppUser, UserRole, AuditLogEntry } from "../lib/types";
 
 // --- Types ---
 interface User {
@@ -42,15 +47,6 @@ interface Integration {
   description: string;
 }
 
-interface AuditLog {
-  id: string;
-  action: string;
-  user: string;
-  timestamp: string;
-  details: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-}
-
 // --- Mock Data ---
 const mockUsers: User[] = [
   { id: "u1", name: "Dr. Sarah Akello", role: "Super Admin", email: "s.akello@village360.org", status: "Active", lastLogin: "Today, 10:15 AM", permissions: ["all"] },
@@ -74,14 +70,6 @@ const mockIntegrations: Integration[] = [
   { id: "i2", name: "Mobile Money Gateway", provider: "MTN Uganda", status: "disconnected", description: "SMS/USSD communication channel" },
   { id: "i3", name: "Weather API", provider: "OpenWeather", status: "connected", lastSync: "1 hour ago", description: "Climate data for disease correlation" },
   { id: "i4", name: "CRVS System", provider: "NIRA", status: "error", description: "Civil registration for birth/death records" },
-];
-
-const mockAuditLogs: AuditLog[] = [
-  { id: "a1", action: "User Login", user: "Dr. Sarah Akello", timestamp: "Today, 10:15 AM", details: "Successful login from 102.134.xx.xx", type: "success" },
-  { id: "a2", action: "Module Disabled", user: "System", timestamp: "Today, 08:00 AM", details: "SMS Gateway disabled due to API limit", type: "warning" },
-  { id: "a3", action: "Data Export", user: "Dr. Laker Joyce", timestamp: "Yesterday, 4:30 PM", details: "Exported Q3 Health Report (PDF)", type: "info" },
-  { id: "a4", action: "Failed Sync", user: "System", timestamp: "Yesterday, 2:00 PM", details: "CRVS connection timeout after 30s", type: "error" },
-  { id: "a5", action: "User Created", user: "Dr. Sarah Akello", timestamp: "Nov 28, 2025", details: "Created account for Achieng Mary", type: "success" },
 ];
 
 // --- Utility Components ---
@@ -173,8 +161,22 @@ function TabButton({ label, icon: Icon, id, active, onClick, badge }: { label: s
 
 // --- Main Component ---
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+  return (
+    <Suspense>
+      <SettingsPageInner />
+    </Suspense>
+  );
+}
+
+function SettingsPageInner() {
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
 
   const handleSave = useCallback(() => {
     setIsSaving(true);
@@ -219,7 +221,7 @@ export default function SettingsPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
         <div className="flex overflow-x-auto scrollbar-hide border-b border-gray-100" role="tablist">
           <TabButton label="Overview" icon={Activity} id="overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
-          <TabButton label="Users & Roles" icon={Users} id="users" active={activeTab === "users"} onClick={() => setActiveTab("users")} badge="5" />
+          <TabButton label="Users & Roles" icon={Users} id="users" active={activeTab === "users"} onClick={() => setActiveTab("users")} />
           <TabButton label="Modules" icon={Zap} id="modules" active={activeTab === "modules"} onClick={() => setActiveTab("modules")} />
           <TabButton label="Integrations" icon={Cloud} id="integrations" active={activeTab === "integrations"} onClick={() => setActiveTab("integrations")} />
           <TabButton label="Security" icon={Shield} id="security" active={activeTab === "security"} onClick={() => setActiveTab("security")} />
@@ -244,13 +246,51 @@ export default function SettingsPage() {
 
 // --- Tab Components ---
 
+function classifyAction(action: string): 'success' | 'warning' | 'danger' | 'info' {
+  if (action.endsWith(".delete")) return "danger";
+  if (action.endsWith(".create") || action.endsWith(".invite")) return "success";
+  if (action.endsWith(".update")) return "info";
+  return "info";
+}
+
+function describeAuditEntry(log: AuditLogEntry): string {
+  const changedFields = log.diff ? Object.keys(log.diff) : [];
+  if (log.action.endsWith(".create") || log.action.endsWith(".invite")) {
+    return `Created ${log.entityType} ${log.entityId}`;
+  }
+  if (log.action.endsWith(".delete")) {
+    return `Deleted ${log.entityType} ${log.entityId}`;
+  }
+  if (changedFields.length > 0) {
+    return `Updated ${log.entityType} ${log.entityId} (${changedFields.join(", ")})`;
+  }
+  return `${log.action} on ${log.entityType} ${log.entityId}`;
+}
+
 function OverviewTab() {
   const activeUsers = mockUsers.filter(u => u.status === "Active").length;
   const activeModules = mockModules.filter(m => m.status).length;
   const connectedIntegrations = mockIntegrations.filter(i => i.status === "connected").length;
 
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditPermissionError, setAuditPermissionError] = useState(false);
+
+  useEffect(() => {
+    api.get<{ data: AuditLogEntry[] }>("/api/audit-log?limit=5")
+      .then(({ data }) => setAuditLogs(data))
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) setAuditPermissionError(true);
+      })
+      .finally(() => setAuditLoading(false));
+  }, []);
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <p className="text-sm text-amber-800">Users, modules, integrations, and security score below are demo fixtures, not live system state. The audit trail below is real.</p>
+        <DemoDataBadge />
+      </div>
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Active Users" value={activeUsers} subtext={`of ${mockUsers.length} total`} variant="success" />
@@ -260,31 +300,42 @@ function OverviewTab() {
       </div>
 
       {/* Recent Activity */}
-      <SectionCard title="Recent Activity" description="System audit trail">
-        <div className="space-y-3">
-          {mockAuditLogs.slice(0, 5).map((log) => (
-            <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className={`p-2 rounded-lg shrink-0 ${log.type === "success" ? "bg-green-50 text-green-600" :
-                  log.type === "warning" ? "bg-amber-50 text-amber-600" :
-                    log.type === "error" ? "bg-red-50 text-red-600" :
-                      "bg-blue-50 text-blue-600"
-                }`}>
-                {log.type === "success" ? <CheckCircle2 size={16} /> :
-                  log.type === "warning" ? <AlertTriangle size={16} /> :
-                    log.type === "error" ? <AlertCircle size={16} /> :
-                      <Info size={16} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-sm text-gray-900">{log.action}</p>
-                  <span className="text-xs text-gray-400 shrink-0">{log.timestamp}</span>
+      <SectionCard title="Recent Activity" description="Real audit trail — every household/user mutation is logged">
+        {auditLoading ? (
+          <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-blue-500" /></div>
+        ) : auditPermissionError ? (
+          <p className="text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={14} /> Requires District Admin or Super Admin to view the audit trail.</p>
+        ) : auditLogs.length === 0 ? (
+          <p className="text-sm text-gray-400">No audited actions yet — create, edit, or delete a household or user to see entries here.</p>
+        ) : (
+          <div className="space-y-3">
+            {auditLogs.map((log) => {
+              const type = classifyAction(log.action);
+              return (
+                <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className={`p-2 rounded-lg shrink-0 ${type === "success" ? "bg-green-50 text-green-600" :
+                      type === "warning" ? "bg-amber-50 text-amber-600" :
+                        type === "danger" ? "bg-red-50 text-red-600" :
+                          "bg-blue-50 text-blue-600"
+                    }`}>
+                    {type === "success" ? <CheckCircle2 size={16} /> :
+                      type === "warning" ? <AlertTriangle size={16} /> :
+                        type === "danger" ? <AlertCircle size={16} /> :
+                          <Info size={16} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm text-gray-900">{log.action}</p>
+                      <span className="text-xs text-gray-400 shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{describeAuditEntry(log)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">by {log.actorName}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">{log.details}</p>
-                <p className="text-xs text-gray-400 mt-0.5">by {log.user}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </SectionCard>
 
       {/* Quick Actions */}
@@ -322,9 +373,33 @@ function OverviewTab() {
 }
 
 function UsersTab() {
-  const [users, setUsers] = useState(mockUsers);
+  const { profile } = useAuth();
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [permissionError, setPermissionError] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+
+  const canManageUsers = profile?.role === "Super Admin" || profile?.role === "District Admin";
+  const canDeleteUsers = profile?.role === "Super Admin";
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setPermissionError(false);
+    try {
+      const { data } = await api.get<{ data: AppUser[] }>("/api/users");
+      setUsers(data);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) setPermissionError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
@@ -335,11 +410,19 @@ function UsersTab() {
     });
   }, [users, searchTerm, roleFilter]);
 
-  const toggleUserStatus = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u));
+  const toggleUserStatus = async (user: AppUser) => {
+    const nextStatus = user.status === "Active" ? "Inactive" : "Active";
+    const { data } = await api.put<{ data: AppUser }>(`/api/users/${user.id}`, { status: nextStatus });
+    setUsers(prev => prev.map(u => u.id === user.id ? data : u));
   };
 
-  const getRoleBadge = (role: User['role']) => {
+  const deleteUser = async (user: AppUser) => {
+    if (!confirm(`Remove ${user.name}'s account? This cannot be undone.`)) return;
+    await api.delete(`/api/users/${user.id}`);
+    setUsers(prev => prev.filter(u => u.id !== user.id));
+  };
+
+  const getRoleBadge = (role: UserRole) => {
     const variants: Record<string, 'danger' | 'info' | 'success' | 'purple' | 'warning'> = {
       "Super Admin": "danger",
       "District Admin": "info",
@@ -350,6 +433,14 @@ function UsersTab() {
     };
     return <Badge variant={variants[role] || "default"}>{role}</Badge>;
   };
+
+  if (permissionError) {
+    return (
+      <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+        <AlertTriangle size={16} /> Your role ({profile?.role}) doesn't have permission to manage users. This needs District Admin or Super Admin.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -379,61 +470,152 @@ function UsersTab() {
             <option value="Partner">Partner</option>
           </select>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm">
-          <PlusCircle size={16} /> Invite User
-        </button>
+        {canManageUsers && (
+          <button
+            onClick={() => setIsInviteOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm"
+          >
+            <PlusCircle size={16} /> Invite User
+          </button>
+        )}
       </div>
 
       {/* Users Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">User</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Role</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Last Login</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-                      {user.name.split(" ").map(n => n[0]).join("")}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-4 px-4">{getRoleBadge(user.role)}</td>
-                <td className="py-4 px-4">
-                  <Badge variant={user.status === "Active" ? "success" : user.status === "Pending" ? "warning" : "default"}>
-                    {user.status}
-                  </Badge>
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-500">{user.lastLogin || "Never"}</td>
-                <td className="py-4 px-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => toggleUserStatus(user.id)}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      {user.status === "Active" ? "Deactivate" : "Activate"}
-                    </button>
-                    <button className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 size={24} className="animate-spin text-blue-500" /></div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">User</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Role</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                        {user.name.split(" ").map(n => n[0]).join("")}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{user.name}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">{getRoleBadge(user.role)}</td>
+                  <td className="py-4 px-4">
+                    <Badge variant={user.status === "Active" ? "success" : user.status === "Pending" ? "warning" : "default"}>
+                      {user.status}
+                    </Badge>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {canManageUsers && (
+                        <button
+                          onClick={() => toggleUserStatus(user)}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {user.status === "Active" ? "Deactivate" : "Activate"}
+                        </button>
+                      )}
+                      {canDeleteUsers && (
+                        <button
+                          onClick={() => deleteUser(user)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredUsers.length === 0 && (
+            <p className="text-center text-sm text-gray-400 py-8">No users match your filters.</p>
+          )}
+        </div>
+      )}
+
+      {isInviteOpen && (
+        <InviteUserModal
+          onClose={() => setIsInviteOpen(false)}
+          onInvited={(user) => setUsers(prev => [...prev, user])}
+        />
+      )}
+    </div>
+  );
+}
+
+function InviteUserModal({ onClose, onInvited }: { onClose: () => void; onInvited: (user: AppUser) => void }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<UserRole>("Field Agent");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const { data } = await api.post<{ data: AppUser }>("/api/users", { name, email, role, temporaryPassword });
+      onInvited(data);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <h3 className="text-lg font-bold text-gray-900">Invite User</h3>
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+            <AlertCircle size={14} /> {error}
+          </div>
+        )}
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Full Name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Jane Doe" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="jane@village360.org" />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Role</label>
+          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="District Admin">District Admin</option>
+            <option value="Health Officer">Health Officer</option>
+            <option value="Field Agent">Field Agent</option>
+            <option value="Partner">Partner</option>
+            <option value="Viewer">Viewer</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1.5">Temporary Password</label>
+          <input type="text" value={temporaryPassword} onChange={(e) => setTemporaryPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="At least 8 characters" />
+          <p className="text-[11px] text-gray-400 mt-1">They'll need this to sign in the first time — there's no invite-email flow yet, so share it out of band.</p>
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <button onClick={onClose} disabled={submitting} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-70">
+            {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
+            {submitting ? "Inviting…" : "Send Invite"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -493,6 +675,10 @@ function ModulesTab() {
 function IntegrationsTab() {
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <p className="text-sm text-amber-800">No integration below has a live connection configured. Statuses shown are simulated for demonstration only.</p>
+        <DemoDataBadge />
+      </div>
       {mockIntegrations.map((integration) => (
         <div key={integration.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
           <div className="flex items-center gap-4">
@@ -609,6 +795,10 @@ function DataSyncTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+        <p className="text-sm text-amber-800">Sync status, storage metrics, and uptime below are simulated — no database or sync job is actually running yet.</p>
+        <DemoDataBadge />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SectionCard title="Sync Status" description="Database synchronization">
           <div className="space-y-4">

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "./components/layout/Sidebar";
-import TopBar from "./components/layout/TopBar";
 import { LayoutProvider } from "./components/providers/LayoutProvider";
+import { AuthProvider } from "./components/providers/AuthProvider";
+import AuthGate from "./components/providers/AuthGate";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,18 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-brand-bg text-gray-900`}>
-        <LayoutProvider>
-          <div className="flex min-h-screen">
-            {/* Sidebar Navigation */}
-            <Sidebar />
-            <TopBar />
-
-            {/* Main Content Area - Shifted right to accommodate fixed Sidebar */}
-            <main className="flex-1 md:ml-64 p-8">
-              {children}
-            </main>
-          </div>
-        </LayoutProvider>
+        <AuthProvider>
+          <LayoutProvider>
+            <AuthGate>{children}</AuthGate>
+          </LayoutProvider>
+        </AuthProvider>
       </body>
     </html>
   );

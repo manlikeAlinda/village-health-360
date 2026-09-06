@@ -10,49 +10,8 @@ import {
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend
 } from "recharts";
-
-// --- REAL DATA: Integrated from districts.json ---
-const DISTRICTS_DATA = {
-  "Central": {
-    "Kampala": ["Kampala City"],
-    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
-    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
-  },
-  "Eastern": {
-    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
-    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
-    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
-    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
-  },
-  "Northern": {
-    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
-    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
-    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
-    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
-  },
-  "Western": {
-    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
-    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
-    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
-    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
-  }
-};
-
-// --- Helper Functions ---
-const getAllDistricts = () => {
-  const districts: string[] = [];
-  Object.values(DISTRICTS_DATA).forEach(region => {
-    Object.values(region).forEach(subRegionDistricts => {
-      districts.push(...subRegionDistricts);
-    });
-  });
-  return districts.sort();
-};
-
-const getSubcounties = (district: string | null) => {
-  if (!district) return [];
-  return [`${district} Central`, `${district} North`, `${district} South`, "Town Council"];
-};
+import DemoDataBadge from "../components/ui/DemoDataBadge";
+import { getAllDistricts, getSubcounties } from "../lib/adminData";
 
 // --- Data Perturbation Logic ---
 const getSeedMultiplier = (seed: string) => {
@@ -230,6 +189,10 @@ export default function LivelihoodsMonitor() {
       </section>
 
       {/* 2. KPI Section */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Economic Indicators</span>
+        <DemoDataBadge label="Simulated — not connected to live data" />
+      </div>
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <EconStat
           label="Avg Monthly Household Income"

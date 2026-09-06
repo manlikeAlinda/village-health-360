@@ -1,135 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search, Filter, Plus, Edit2, Trash2,
   MapPin, Droplets, Activity, X, MoreHorizontal,
   ChevronRight, AlertCircle, CalendarClock, Info,
   Save, AlertTriangle, Users, TrendingUp, ChevronDown,
-  Download, Share2
+  Download, Share2, Loader2
 } from "lucide-react";
-
-// --- TYPE DEFINITIONS ---
-interface Household {
-  id: string;
-  head: string;
-  village: string;
-  parish: string;
-  members: number;
-  riskLevel: string;
-  healthStatus: string;
-  waterSource: string;
-  lastVisit: string;
-  program: string;
-}
-
-// --- REAL DATA: Integrated from districts.json ---
-const DISTRICTS_DATA = {
-  "Central": {
-    "Kampala": ["Kampala City"],
-    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
-    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
-  },
-  "Eastern": {
-    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
-    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
-    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
-    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
-  },
-  "Northern": {
-    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
-    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
-    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
-    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
-  },
-  "Western": {
-    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
-    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
-    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
-    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
-  }
-};
-
-// --- Helper Functions ---
-const getAllDistricts = () => {
-  const districts: string[] = [];
-  Object.values(DISTRICTS_DATA).forEach(region => {
-    Object.values(region).forEach(subRegionDistricts => {
-      districts.push(...subRegionDistricts);
-    });
-  });
-  return districts.sort();
-};
-
-const getSubcounties = (district: string | null) => {
-  if (!district) return [];
-  return [`${district} Central`, `${district} North`, `${district} South`, "Town Council"];
-};
-
-// --- Domain-Specific Mock Data ---
-const initialHouseholds: Household[] = [
-  {
-    id: "HH-GUL-001",
-    head: "Okelo James",
-    village: "Bwobo",
-    parish: "Patiko",
-    members: 6,
-    riskLevel: "High",
-    healthStatus: "Pregnant Mother",
-    waterSource: "Unsafe (Stream)",
-    lastVisit: "2 days ago",
-    program: "Cash Transfer"
-  },
-  {
-    id: "HH-GUL-002",
-    head: "Akello Sarah",
-    village: "Ajulu",
-    parish: "Patiko",
-    members: 4,
-    riskLevel: "Low",
-    healthStatus: "Fully Immunized",
-    waterSource: "Borehole (Safe)",
-    lastVisit: "1 month ago",
-    program: "VSLA Linkage"
-  },
-  {
-    id: "HH-GUL-003",
-    head: "Opio David",
-    village: "Bwobo",
-    parish: "Patiko",
-    members: 8,
-    riskLevel: "Medium",
-    healthStatus: "Malaria Case",
-    waterSource: "Borehole (Broken)",
-    lastVisit: "1 week ago",
-    program: "Agri-Input"
-  },
-  {
-    id: "HH-GUL-004",
-    head: "Achan Grace",
-    village: "Koro",
-    parish: "Omoro",
-    members: 3,
-    riskLevel: "Critical",
-    healthStatus: "Child Malnutrition",
-    waterSource: "Unsafe (River)",
-    lastVisit: "Yesterday",
-    program: "Emergency Food"
-  },
-  {
-    id: "HH-GUL-005",
-    head: "Mugisha Ben",
-    village: "Ajulu",
-    parish: "Patiko",
-    members: 5,
-    riskLevel: "Low",
-    healthStatus: "Stable",
-    waterSource: "Tap Stand",
-    lastVisit: "3 weeks ago",
-    program: "VSLA Linkage"
-  },
-];
+import { useHouseholdsStore } from "../store/householdsStore";
+import { Household, HouseholdInput } from "../lib/types";
+import DemoDataBadge from "../components/ui/DemoDataBadge";
+import { getAllDistricts, getSubcounties, getDistrictCenter } from "../lib/adminData";
+import LocationPicker from "../components/ui/LocationPicker";
 
 // Filter Select Component
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
@@ -152,7 +36,7 @@ const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) 
 );
 
 export default function HouseholdsPage() {
-  const [data, setData] = useState<Household[]>(initialHouseholds);
+  const { households, loading, error, fetchAll, remove } = useHouseholdsStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("All");
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
@@ -163,11 +47,17 @@ export default function HouseholdsPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --- Derived Data ---
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
+
+  // Server-side scoping by district/subcounty; search + risk filtered client-side below.
+  useEffect(() => {
+    fetchAll({ district: selectedDistrict || undefined, subcounty: selectedSubcounty || undefined });
+  }, [selectedDistrict, selectedSubcounty, fetchAll]);
 
   // --- Actions ---
   const handleEditClick = (hh: Household) => {
@@ -180,15 +70,20 @@ export default function HouseholdsPage() {
     setIsDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!selectedHousehold) return;
-    setData(data.filter(h => h.id !== selectedHousehold.id));
-    setIsDeleteOpen(false);
-    setSelectedHousehold(null);
+    setIsDeleting(true);
+    try {
+      await remove(selectedHousehold.id);
+      setIsDeleteOpen(false);
+      setSelectedHousehold(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  // --- Filtering Logic ---
-  const filteredData = data.filter((item) => {
+  // --- Filtering Logic (search + risk, client-side over the fetched scope) ---
+  const filteredData = households.filter((item) => {
     const matchesSearch = item.head.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.village.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -196,9 +91,15 @@ export default function HouseholdsPage() {
     return matchesSearch && matchesRisk;
   });
 
-  // --- Stats ---
-  const totalHouseholds = 82450;
-  const criticalCount = data.filter(h => h.riskLevel === "Critical").length;
+  // --- Real Stats (derived from fetched data, not fabricated) ---
+  const criticalCount = households.filter(h => h.riskLevel === "Critical").length;
+  const newThisMonth = useMemo(() => {
+    const now = new Date();
+    return households.filter(h => {
+      const created = new Date(h.createdAt);
+      return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+    }).length;
+  }, [households]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 p-6 lg:p-10 mt-16">
@@ -226,6 +127,12 @@ export default function HouseholdsPage() {
           </div>
         </div>
       </header>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle size={16} /> Couldn't reach the API ({error}). Is the backend running at the configured NEXT_PUBLIC_API_URL?
+        </div>
+      )}
 
       {/* Filter Bar */}
       <section className="mb-8 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
@@ -278,6 +185,7 @@ export default function HouseholdsPage() {
               <X size={14} /> Clear Filters
             </button>
           )}
+          {loading && <Loader2 size={16} className="animate-spin text-gray-400 ml-auto" />}
         </div>
       </section>
 
@@ -290,8 +198,8 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{totalHouseholds.toLocaleString()}</h4>
-            <p className="text-sm font-medium text-gray-500 mt-0.5">Total Households</p>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{households.length.toLocaleString()}</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Households {selectedDistrict ? `in ${currentLocation}` : "(All Districts)"}</p>
             <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Registered beneficiaries</p>
           </div>
         </div>
@@ -303,7 +211,7 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">1,204</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{criticalCount.toLocaleString()}</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">Critical Priority</p>
             <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Require immediate attention</p>
           </div>
@@ -314,11 +222,12 @@ export default function HouseholdsPage() {
             <div className="p-2.5 rounded-xl border bg-green-50 text-green-700 border-green-200">
               <Activity size={20} />
             </div>
+            <DemoDataBadge label="Not tracked yet" />
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">94.2%</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">—</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">Visit Compliance</p>
-            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Last 30 days coverage</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Needs a visit-schedule model (not built yet)</p>
           </div>
         </div>
 
@@ -329,9 +238,9 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">+2,340</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">+{newThisMonth.toLocaleString()}</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">New This Month</p>
-            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Registered in last 30 days</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Registered in the current calendar month</p>
           </div>
         </div>
       </section>
@@ -352,7 +261,12 @@ export default function HouseholdsPage() {
 
       {/* 4. Data Table */}
       <section className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {filteredData.length > 0 ? (
+        {loading && households.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Loader2 size={28} className="animate-spin text-purple-500 mb-3" />
+            <p className="text-gray-500 text-sm">Loading households…</p>
+          </div>
+        ) : filteredData.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -419,7 +333,7 @@ export default function HouseholdsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <CalendarClock size={14} className="text-gray-400" />
-                        {hh.lastVisit}
+                        {hh.lastVisit || "No visits logged"}
                       </div>
                     </td>
 
@@ -463,11 +377,7 @@ export default function HouseholdsPage() {
         {/* Footer */}
         {filteredData.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <p>Showing <span className="font-bold text-gray-900">{filteredData.length}</span> of {data.length} records</p>
-            <div className="flex gap-2">
-              <button className="px-3 py-1.5 border border-gray-300 rounded hover:bg-white disabled:opacity-50" disabled>Previous</button>
-              <button className="px-3 py-1.5 border border-gray-300 rounded hover:bg-white">Next</button>
-            </div>
+            <p>Showing <span className="font-bold text-gray-900">{filteredData.length}</span> of {households.length} records</p>
           </div>
         )}
       </section>
@@ -477,7 +387,7 @@ export default function HouseholdsPage() {
       {/* Registration Modal */}
       {isRegisterOpen && (
         <ModalBase title="New Household Registration" onClose={() => setIsRegisterOpen(false)}>
-          <HouseholdForm onClose={() => setIsRegisterOpen(false)} />
+          <HouseholdForm onClose={() => setIsRegisterOpen(false)} allDistricts={allDistricts} />
         </ModalBase>
       )}
 
@@ -488,6 +398,7 @@ export default function HouseholdsPage() {
             initialData={selectedHousehold}
             onClose={() => setIsEditOpen(false)}
             isEdit
+            allDistricts={allDistricts}
           />
         </ModalBase>
       )}
@@ -495,7 +406,7 @@ export default function HouseholdsPage() {
       {/* Delete Confirmation Modal */}
       {isDeleteOpen && selectedHousehold && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsDeleteOpen(false)} />
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => !isDeleting && setIsDeleteOpen(false)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -503,21 +414,24 @@ export default function HouseholdsPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-900">Delete Household Record?</h3>
               <p className="text-sm text-gray-500 mt-2">
-                You are about to remove <span className="font-bold text-gray-800">{selectedHousehold.head}</span> ({selectedHousehold.id}) from the directory. This action cannot be undone.
+                You are about to permanently remove <span className="font-bold text-gray-800">{selectedHousehold.head}</span> ({selectedHousehold.id}) from the directory. This action cannot be undone.
               </p>
             </div>
             <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-center">
               <button
                 onClick={() => setIsDeleteOpen(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium"
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm"
+                disabled={isDeleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm disabled:opacity-70"
               >
-                Confirm Delete
+                {isDeleting ? <Loader2 size={14} className="animate-spin" /> : null}
+                {isDeleting ? "Deleting…" : "Confirm Delete"}
               </button>
             </div>
           </div>
@@ -537,7 +451,7 @@ function EmptyState({ clearFilters }: { clearFilters: () => void }) {
       </div>
       <h3 className="text-lg font-bold text-gray-900">No households found</h3>
       <p className="text-gray-500 max-w-sm mt-2 mb-6">
-        Try adjusting your search or filter criteria to find what you are looking for.
+        Try adjusting your search or filter criteria, or register a new household.
       </p>
       <button
         onClick={clearFilters}
@@ -557,7 +471,6 @@ function ModalBase({ title, onClose, children }: { title: string, onClose: () =>
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
             <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-            <p className="text-xs text-gray-500 mt-1">Ensure all fields comply with Gulu District Data Standards.</p>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
             <X size={20} />
@@ -569,11 +482,71 @@ function ModalBase({ title, onClose, children }: { title: string, onClose: () =>
   );
 }
 
-function HouseholdForm({ onClose, initialData = {}, isEdit = false }: { onClose: () => void, initialData?: Partial<Household>, isEdit?: boolean }) {
+function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: { onClose: () => void, initialData?: Household, isEdit?: boolean, allDistricts: string[] }) {
+  const { create, update } = useHouseholdsStore();
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    head: initialData?.head || "",
+    phone: initialData?.phone || "",
+    nationalId: initialData?.nationalId || "",
+    members: initialData?.members ?? 1,
+    under5Count: initialData?.under5Count ?? 0,
+    district: initialData?.district || "",
+    subcounty: initialData?.subcounty || "",
+    village: initialData?.village || "",
+    parish: initialData?.parish || "",
+    riskLevel: initialData?.riskLevel || "Low",
+    healthStatus: initialData?.healthStatus || "Stable",
+    waterSource: initialData?.waterSource || "Borehole (Safe)",
+    program: initialData?.program || "Routine Monitoring",
+    lat: initialData?.lat,
+    lng: initialData?.lng,
+  });
+
+  const formSubcounties = useMemo(() => getSubcounties(form.district || null), [form.district]);
+  const mapCenter = useMemo(() => getDistrictCenter(form.district || null), [form.district]);
+  const locationValue = form.lat != null && form.lng != null ? { lat: form.lat, lng: form.lng } : null;
+
+  const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const handleSubmit = async () => {
+    if (!form.head.trim() || !form.district || !form.village.trim() || !form.parish.trim()) {
+      setFormError("Head of household, district, village, and parish are required.");
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const payload: HouseholdInput = {
+        ...form,
+        members: Number(form.members),
+        under5Count: Number(form.under5Count),
+      };
+      if (isEdit && initialData) {
+        await update(initialData.id, payload);
+      } else {
+        await create(payload);
+      }
+      onClose();
+    } catch (err) {
+      setFormError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
       <div className="flex-1 overflow-y-auto p-6">
-        <form className="space-y-8">
+        {formError && (
+          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
+            <AlertCircle size={14} /> {formError}
+          </div>
+        )}
+        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
           {/* Form Section 1 */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-2">
@@ -581,12 +554,12 @@ function HouseholdForm({ onClose, initialData = {}, isEdit = false }: { onClose:
               Identity & Demographics
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup label="Head of Household" placeholder="Full Name (Last, First)" defaultValue={initialData.head} />
-              <InputGroup label="Phone Number" placeholder="+256 7..." type="tel" />
-              <InputGroup label="National ID / NIN" placeholder="CM..." />
+              <InputGroup label="Head of Household" placeholder="Full Name (Last, First)" value={form.head} onChange={(v) => setField("head", v)} />
+              <InputGroup label="Phone Number" placeholder="+256 7..." type="tel" value={form.phone} onChange={(v) => setField("phone", v)} />
+              <InputGroup label="National ID / NIN" placeholder="CM..." value={form.nationalId} onChange={(v) => setField("nationalId", v)} />
               <div className="grid grid-cols-2 gap-4">
-                <InputGroup label="Members (Total)" placeholder="0" type="number" defaultValue={initialData.members} />
-                <InputGroup label="Under 5s" placeholder="0" type="number" />
+                <InputGroup label="Members (Total)" placeholder="0" type="number" value={String(form.members)} onChange={(v) => setField("members", Number(v) || 0)} />
+                <InputGroup label="Under 5s" placeholder="0" type="number" value={String(form.under5Count)} onChange={(v) => setField("under5Count", Number(v) || 0)} />
               </div>
             </div>
           </div>
@@ -600,27 +573,66 @@ function HouseholdForm({ onClose, initialData = {}, isEdit = false }: { onClose:
               Location & Vulnerability
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup label="Village Name" placeholder="e.g. Bwobo" defaultValue={initialData.village} />
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">Parish</label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white" defaultValue={initialData.parish}>
-                  <option>Select Parish...</option>
-                  <option>Patiko</option>
-                  <option>Omoro</option>
-                  <option>Paicho</option>
-                  <option>Awach</option>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">District</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white"
+                  value={form.district}
+                  onChange={(e) => {
+                    setField("district", e.target.value);
+                    setField("subcounty", "");
+                  }}
+                >
+                  <option value="">Select District...</option>
+                  {allDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Subcounty</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  value={form.subcounty}
+                  onChange={(e) => setField("subcounty", e.target.value)}
+                  disabled={!form.district}
+                >
+                  <option value="">{form.district ? "Select Subcounty..." : "Select district first"}</option>
+                  {formSubcounties.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <InputGroup label="Village Name" placeholder="e.g. Bwobo" value={form.village} onChange={(v) => setField("village", v)} />
+              <InputGroup label="Parish" placeholder="e.g. Patiko" value={form.parish} onChange={(v) => setField("parish", v)} />
+
+              <div className="md:col-span-2">
+                <LocationPicker
+                  value={locationValue}
+                  center={mapCenter}
+                  onChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                />
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Initial Risk Assessment (HEA Score)</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <RadioCard label="Low" color="border-gray-200 hover:border-purple-300" defaultChecked={initialData.riskLevel === 'Low'} />
-                  <RadioCard label="Medium" color="border-yellow-200 bg-yellow-50/50" defaultChecked={initialData.riskLevel === 'Medium'} />
-                  <RadioCard label="High" color="border-orange-200 bg-orange-50/50" defaultChecked={initialData.riskLevel === 'High'} />
-                  <RadioCard label="Critical" color="border-red-200 bg-red-50/50" defaultChecked={initialData.riskLevel === 'Critical'} />
+                  {(["Low", "Medium", "High", "Critical"] as const).map((level) => (
+                    <RadioCard key={level} label={level} checked={form.riskLevel === level} onSelect={() => setField("riskLevel", level)} />
+                  ))}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100" />
+
+          {/* Form Section 3 */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-[10px]">3</span>
+              Health & Intervention
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <InputGroup label="Health Status" placeholder="e.g. Pregnant Mother" value={form.healthStatus} onChange={(v) => setField("healthStatus", v)} />
+              <InputGroup label="Water Source" placeholder="e.g. Borehole (Safe)" value={form.waterSource} onChange={(v) => setField("waterSource", v)} />
+              <InputGroup label="Program" placeholder="e.g. Cash Transfer" value={form.program} onChange={(v) => setField("program", v)} />
             </div>
           </div>
         </form>
@@ -629,13 +641,18 @@ function HouseholdForm({ onClose, initialData = {}, isEdit = false }: { onClose:
       <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors shadow-sm"
+          disabled={submitting}
+          className="px-4 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
         >
           Cancel
         </button>
-        <button className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 shadow-md transition-all active:scale-95">
-          <Save size={16} />
-          {isEdit ? "Update Record" : "Save Registration"}
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 shadow-md transition-all active:scale-95 disabled:opacity-70"
+        >
+          {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          {submitting ? "Saving…" : isEdit ? "Update Record" : "Save Registration"}
         </button>
       </div>
     </>
@@ -660,13 +677,14 @@ function RiskBadge({ level }: { level: string }) {
   );
 }
 
-function InputGroup({ label, placeholder, type = "text", defaultValue }: { label: string, placeholder: string, type?: string, defaultValue?: string | number }) {
+function InputGroup({ label, placeholder, type = "text", value, onChange }: { label: string, placeholder: string, type?: string, value?: string, onChange: (value: string) => void }) {
   return (
     <div>
       <label className="block text-xs font-bold text-gray-700 mb-1.5">{label}</label>
       <input
         type={type}
-        defaultValue={defaultValue}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
         className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors"
         placeholder={placeholder}
       />
@@ -674,10 +692,16 @@ function InputGroup({ label, placeholder, type = "text", defaultValue }: { label
   );
 }
 
-function RadioCard({ label, color, defaultChecked }: { label: string, color: string, defaultChecked?: boolean }) {
+function RadioCard({ label, checked, onSelect }: { label: string, checked?: boolean, onSelect: () => void }) {
+  const colorMap: Record<string, string> = {
+    Low: "border-gray-200 hover:border-purple-300",
+    Medium: "border-yellow-200 bg-yellow-50/50",
+    High: "border-orange-200 bg-orange-50/50",
+    Critical: "border-red-200 bg-red-50/50",
+  };
   return (
-    <label className={`cursor-pointer border rounded-lg p-3 text-center transition-all hover:shadow-sm ${color} ${defaultChecked ? 'ring-2 ring-purple-500 border-purple-500' : ''}`}>
-      <input type="radio" name="risk" className="sr-only" defaultChecked={defaultChecked} />
+    <label className={`cursor-pointer border rounded-lg p-3 text-center transition-all hover:shadow-sm ${colorMap[label]} ${checked ? 'ring-2 ring-purple-500 border-purple-500' : ''}`}>
+      <input type="radio" name="risk" className="sr-only" checked={checked} onChange={onSelect} />
       <span className="text-xs font-bold text-gray-700">{label}</span>
     </label>
   );

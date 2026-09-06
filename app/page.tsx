@@ -7,46 +7,14 @@ import {
   ChevronDown, X, Globe, Calendar, CheckCircle, Wrench, Baby,
   Download, Share2
 } from "lucide-react";
-
-// --- REAL DATA: Integrated from districts.json ---
-const DISTRICTS_DATA = {
-  "Central": {
-    "Kampala": ["Kampala City"],
-    "Buganda South": ["Bukomansimbi", "Butambala", "Gomba", "Kalangala", "Kalungu", "Kyotera", "Lwengo", "Lyantonde", "Masaka", "Masaka City", "Mpigi", "Rakai", "Sembabule", "Wakiso"],
-    "Buganda North": ["Buikwe", "Buvuma", "Kassanda", "Kayunga", "Kiboga", "Kyankwanzi", "Luweero", "Mityana", "Mubende", "Mukono", "Nakaseke", "Nakasongola", "Kasanda"]
-  },
-  "Eastern": {
-    "Busoga": ["Bugiri", "Bugweri", "Buyende", "Iganga", "Jinja", "Jinja City", "Kaliro", "Kamuli", "Luuka", "Mayuge", "Namayingo", "Namutumba"],
-    "Bukedi": ["Budaka", "Busia", "Butaleja", "Butebo", "Kibuku", "Pallisa", "Tororo"],
-    "Elgon": ["Bududa", "Bukwo", "Bulambuli", "Kapchorwa", "Kween", "Manafwa", "Mbale", "Mbale City", "Namisindwa", "Sironko"],
-    "Teso": ["Amuria", "Bukedea", "Kaberamaido", "Kalaki", "Kapelebyong", "Katakwi", "Kumi", "Ngora", "Serere", "Soroti", "Soroti City"]
-  },
-  "Northern": {
-    "Karamoja": ["Abim", "Amudat", "Kaabong", "Karenga", "Kotido", "Moroto", "Nabilatuk", "Nakapiripirit", "Napak"],
-    "Lango": ["Alebtong", "Amolatar", "Apac", "Dokolo", "Kole", "Kwania", "Lira", "Lira City", "Otuke", "Oyam"],
-    "Acholi": ["Agago", "Amuru", "Gulu", "Gulu City", "Kitgum", "Lamwo", "Nwoya", "Omoro", "Pader"],
-    "West Nile": ["Adjumani", "Arua", "Arua City", "Koboko", "Madi-Okollo", "Maracha", "Moyo", "Nebbi", "Obongi", "Pakwach", "Terego", "Yumbe", "Zombo"]
-  },
-  "Western": {
-    "Bunyoro": ["Buliisa", "Hoima", "Hoima City", "Kagadi", "Kakumiro", "Kibaale", "Kikuube", "Kiryandongo", "Masindi"],
-    "Tooro": ["Bundibugyo", "Kabarole", "Kamwenge", "Kitagwenda", "Kyegegwa", "Kyenjojo", "Ntoroko", "Kasese"],
-    "Ankole": ["Buhweju", "Bushenyi", "Ibanda", "Isingiro", "Kazo", "Kiruhura", "Mbarara", "Mbarara City", "Mitooma", "Ntungamo", "Rubirizi", "Rwampara", "Sheema"],
-    "Kigezi": ["Kabale", "Kanungu", "Kisoro", "Rubanda", "Rukiga", "Rukungiri"]
-  }
-};
+import DemoDataBadge from "./components/ui/DemoDataBadge";
+import { getAllDistricts, getSubcounties, getDistrictCenter } from "./lib/adminData";
+import { useHouseholdsStore } from "./store/householdsStore";
+import { api } from "./lib/api";
+import type { Facility } from "./lib/types";
+import MapCanvasWrapper, { type MapLayers } from "./map/MapCanvasWrapper";
 
 const ALERT_CATEGORIES = ["Cholera", "Malaria", "Floods", "Drought"];
-
-// --- Helper: Extract Flat District List ---
-const getAllDistricts = () => {
-  const districts: string[] = [];
-  Object.values(DISTRICTS_DATA).forEach(region => {
-    Object.values(region).forEach(subRegionDistricts => {
-      districts.push(...subRegionDistricts);
-    });
-  });
-  return districts.sort();
-};
 
 // --- Helper: Deterministic Random Number Generator based on String ---
 const getSeededNumber = (seed: string, base: number, variance: number) => {
@@ -162,36 +130,32 @@ const Combobox = ({ label, options, value, onChange, disabled, placeholder }: Co
 };
 
 // --- Map Component ---
-const MapWrapper = ({ scope, location }: { scope: string, location: string }) => {
-  // Construct a query URL for Google Maps Embed
-  // Uses "Location, Uganda" to ensure accuracy
-  const mapQuery = useMemo(() => {
-    const baseLocation = location === "National" ? "Uganda" : `${location}, Uganda`;
-    return encodeURIComponent(baseLocation);
-  }, [location]);
+const DASHBOARD_MAP_LAYERS: MapLayers = { households: true, waterPoints: true, healthFacilities: true, schools: false, latrines: false };
 
-  // Zoom levels: National = 6, District = 10, Subcounty = 12
-  const zoomLevel = scope === "National" ? 7 : scope === "District" ? 11 : 13;
+const MapWrapper = ({ scope, location, district }: { scope: string, location: string, district: string | null }) => {
+  const { households, fetchAll } = useHouseholdsStore();
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const center = useMemo(() => getDistrictCenter(district), [district]);
+  const zoom = scope === "National" ? 7 : scope === "District" ? 11 : 13;
+
+  useEffect(() => {
+    fetchAll({ district: district || undefined });
+  }, [district, fetchAll]);
+
+  useEffect(() => {
+    const params = district ? `?district=${encodeURIComponent(district)}` : "";
+    api.get<{ data: Facility[] }>(`/api/facilities${params}`).then(({ data }) => setFacilities(data));
+  }, [district]);
 
   return (
     <div className="w-full h-full bg-slate-100 relative overflow-hidden group">
-      {/* Real Map Iframe */}
-      <iframe
-        width="100%"
-        height="100%"
-        style={{ border: 0, minHeight: '400px' }}
-        loading="lazy"
-        allowFullScreen
-        referrerPolicy="no-referrer-when-downgrade"
-        src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=${zoomLevel}&ie=UTF8&iwloc=&output=embed`}
-        title={`Map of ${location}`}
-      ></iframe>
+      <MapCanvasWrapper center={center} zoom={zoom} households={households} facilities={facilities} layers={DASHBOARD_MAP_LAYERS} />
 
       {/* Overlay Badge */}
-      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+      <div className="absolute top-4 left-4 z-[500] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 pointer-events-none">
         <p className="text-gray-600 font-medium text-xs flex items-center gap-2">
           <Globe size={12} className="text-blue-600" />
-          Live View: <span className="font-bold text-gray-900">{location}</span>
+          <span className="font-bold text-gray-900">{location}</span>
         </p>
       </div>
 
@@ -267,18 +231,8 @@ export default function Dashboard() {
   // 1. Get Real Districts
   const allDistricts = useMemo(() => getAllDistricts(), []);
 
-  // 2. Generate Deterministic Subcounties (Since JSON stops at District level)
-  const availableSubcounties = useMemo(() => {
-    if (!selectedDistrict) return [];
-    // Generating realistic subcounty structure based on district name to ensure feature works
-    return [
-      `${selectedDistrict} Central`,
-      `${selectedDistrict} North`,
-      `${selectedDistrict} South`,
-      `${selectedDistrict} Town Council`,
-      `Greater ${selectedDistrict}`
-    ];
-  }, [selectedDistrict]);
+  // 2. Real gazetted subcounties for the selected district
+  const availableSubcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
 
   const handleDistrictChange = (district: string | null) => {
     setSelectedDistrict(district);
@@ -373,6 +327,10 @@ export default function Dashboard() {
         </header>
 
         {/* 3. Reactive KPI Grid */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Key Performance Indicators</span>
+          <DemoDataBadge label="Simulated — not connected to live data" />
+        </div>
         <section aria-label="Key Performance Indicators" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <StatsCard
             label="Active Agents"
@@ -425,20 +383,20 @@ export default function Dashboard() {
             </div>
 
             <div className="flex-1 bg-slate-100 relative w-full h-full min-h-[400px]">
-              <MapWrapper scope={currentScope} location={currentLocationString} />
+              <MapWrapper scope={currentScope} location={currentLocationString} district={selectedDistrict} />
             </div>
 
-            <div className="p-3 border-t border-gray-100 bg-white text-xs text-gray-500 flex justify-between">
-              <span>Data updated: Real-time</span>
+            <div className="p-3 border-t border-gray-100 bg-white text-xs text-gray-500 flex justify-between items-center">
+              <span>Data shown: Live query for {currentLocationString}</span>
               <span className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#F44336]"></span> Critical
+                  <span className="w-2 h-2 rounded-full bg-[#DC2626]"></span> Critical
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#FF9800]"></span> WASH
+                  <span className="w-2 h-2 rounded-full bg-[#3B82F6]"></span> WASH
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#2196F3]"></span> Health
+                  <span className="w-2 h-2 rounded-full bg-[#F97316]"></span> Health
                 </span>
               </span>
             </div>
