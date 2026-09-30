@@ -100,7 +100,7 @@ export default function GeospatialHub() {
   }, [selectedDistrict]);
 
   // --- Real Quick Stats, derived from the fetched households/facilities ---
-  const geolocatedHouseholds = households.filter((h) => h.lat != null && h.lng != null);
+  const geolocatedHouseholds = households.filter((h) => h.location?.latitude != null && h.location?.longitude != null);
   const safeWaterCount = households.filter((h) => SAFE_WATER_KEYWORDS.some((kw) => h.waterSource.toLowerCase().includes(kw)) && !h.waterSource.toLowerCase().includes("unsafe")).length;
   const safeWaterPct = households.length > 0 ? Math.round((safeWaterCount / households.length) * 100) : null;
 
@@ -354,7 +354,7 @@ export default function GeospatialHub() {
                       <AlertTriangle size={14} className="text-red-600 shrink-0 mt-0.5" />
                       <div>
                         <div className="text-xs font-bold text-red-900 group-hover:underline">{h.head}</div>
-                        <div className="text-[11px] text-red-700 leading-tight">{h.village}, {h.parish}</div>
+                        <div className="text-[11px] text-red-700 leading-tight">{h.location ? `${h.location.village_id}, ${h.location.parish_id}` : "Location not set"}</div>
                       </div>
                     </Link>
                   ))}

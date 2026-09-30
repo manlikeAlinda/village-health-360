@@ -1,27 +1,31 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
-  Wallet, Briefcase, TrendingUp, Users,
-  PiggyBank, ArrowUpRight, ArrowDownRight,
-  AlertTriangle, LucideIcon, Target, Filter, ChevronDown, X,
-  Download, Share2
+  Wallet, TrendingUp,
+  AlertTriangle, LucideIcon, Filter, ChevronDown, X, Loader2,
+  Sprout, ClipboardList
 } from "lucide-react";
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import DemoDataBadge from "../components/ui/DemoDataBadge";
 import { getAllDistricts, getSubcounties } from "../lib/adminData";
+import { useHouseholdsStore } from "../store/householdsStore";
+import { INCOME_BRACKETS } from "../lib/types";
 
-// --- Data Perturbation Logic ---
-const getSeedMultiplier = (seed: string) => {
-  if (!seed || seed === "National") return 1;
-  const val = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return 0.7 + ((val % 60) / 100);
-};
+function tally(values: (string | undefined)[], emptyLabel = "Not recorded"): { name: string; value: number }[] {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    const v = raw?.trim() || emptyLabel;
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}
 
-// --- Domain Constants ---
-const USD_RATE = 3750;
+const CHART_COLORS = ["#7C3AED", "#DB2777", "#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#6366F1", "#94A3B8"];
 
 // --- Component System ---
 
@@ -29,14 +33,12 @@ interface EconStatProps {
   label: string;
   value: string;
   suffix?: string;
-  trend: string;
-  trendDir: 'up' | 'down' | 'neutral';
   icon: LucideIcon;
   intent: 'brand' | 'success' | 'warning' | 'danger';
   subtext?: string;
 }
 
-function EconStat({ label, value, suffix, trend, trendDir, icon: Icon, intent, subtext }: EconStatProps) {
+function EconStat({ label, value, suffix, icon: Icon, intent, subtext }: EconStatProps) {
   const styles = {
     brand: "bg-purple-50 text-purple-700 border-purple-200",
     success: "bg-green-50 text-green-700 border-green-200",
@@ -44,18 +46,10 @@ function EconStat({ label, value, suffix, trend, trendDir, icon: Icon, intent, s
     danger: "bg-red-50 text-red-700 border-red-200",
   };
 
-  const trendColor = trendDir === 'up' ? "text-green-600" : trendDir === 'down' ? "text-red-500" : "text-gray-500";
-  const TrendIcon = trendDir === 'up' ? ArrowUpRight : trendDir === 'down' ? ArrowDownRight : TrendingUp;
-
   return (
     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="flex justify-between items-start">
-        <div className={`p-2.5 rounded-xl border ${styles[intent]}`}>
-          <Icon size={20} />
-        </div>
-        <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-gray-50 ${trendColor}`}>
-          <TrendIcon size={12} /> {trend}
-        </div>
+      <div className={`p-2.5 rounded-xl border inline-flex ${styles[intent]}`}>
+        <Icon size={20} />
       </div>
       <div className="mt-4">
         <div className="flex items-baseline gap-1">
@@ -69,7 +63,6 @@ function EconStat({ label, value, suffix, trend, trendDir, icon: Icon, intent, s
   );
 }
 
-// Filter Select Component
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
   <div className="relative min-w-[200px]">
     <select
@@ -93,38 +86,73 @@ export default function LivelihoodsMonitor() {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
 
-  // --- Derived Data Logic ---
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
 
-  const seed = currentLocation;
-  const multiplier = useMemo(() => getSeedMultiplier(seed), [seed]);
+  const { households, loading, fetchAll } = useHouseholdsStore();
 
-  // --- Dynamic Data Generators ---
-  const avgIncome = Math.floor(300000 * multiplier);
+  useEffect(() => {
+    fetchAll({ district: selectedDistrict || undefined, subcounty: selectedSubcounty || undefined });
+  }, [selectedDistrict, selectedSubcounty, fetchAll]);
 
-  const incomeData = useMemo(() => [
-    { name: "Agri-Business (Cash Crops)", value: Math.floor(45 * multiplier), color: "#7C3AED" },
-    { name: "Small Trade/Petty Commerce", value: Math.floor(25 * multiplier), color: "#DB2777" },
-    { name: "Formal Employment (Local)", value: Math.floor(10 * multiplier), color: "#06B6D4" },
-    { name: "Remittances (Diaspora)", value: Math.floor(15 * multiplier), color: "#10B981" },
-    { name: "Casual Labor/Gigs", value: Math.floor(5 * multiplier), color: "#F59E0B" },
-  ], [multiplier]);
+  // --- Real aggregates ---
+  const total = households.length;
 
-  const vslaGroups = useMemo(() => [
-    { id: "VS-01", name: "Bwobo Women United", members: Math.floor(35 * multiplier), savings: Math.floor(8500000 * multiplier), target: 10000000, loanRepayRate: 0.98, status: "Healthy" },
-    { id: "VS-02", name: "Koro Youth Tech-Savings", members: Math.floor(18 * multiplier), savings: Math.floor(2500000 * multiplier), target: 5000000, loanRepayRate: 0.75, status: "At Risk" },
-    { id: "VS-03", name: "Ajulu Farmers Group", members: Math.floor(50 * multiplier), savings: Math.floor(12500000 * multiplier), target: 12000000, loanRepayRate: 1.05, status: "Exceeded" },
-    { id: "VS-04", name: "Omoro Widows Fund", members: Math.floor(24 * multiplier), savings: Math.floor(4800000 * multiplier), target: 5000000, loanRepayRate: 0.90, status: "Healthy" },
-    { id: "VS-05", name: "Gulu Urban Innovators", members: Math.floor(10 * multiplier), savings: Math.floor(1500000 * multiplier), target: 4000000, loanRepayRate: 0.55, status: "Critical" },
-  ], [multiplier]);
+  const withLivelihoodsData = useMemo(() => households.filter((h) => h.livelihoods), [households]);
+  const coveragePct = total > 0 ? Math.round((withLivelihoodsData.length / total) * 100) : null;
 
-  const totalSavings = useMemo(() => vslaGroups.reduce((acc, g) => acc + g.savings, 0), [vslaGroups]);
-  const avgLoanRepayRate = useMemo(() => (vslaGroups.reduce((acc, g) => acc + g.loanRepayRate, 0) / vslaGroups.length * 100).toFixed(1), [vslaGroups]);
+  const incomeTally = useMemo(
+    () => tally(withLivelihoodsData.map((h) => h.livelihoods?.incomeSource)),
+    [withLivelihoodsData]
+  );
+
+  // Ordinal, not frequency-sorted — a tier chart needs to read low-to-high,
+  // not shuffled by count. This is the real, population-relative tiering
+  // Slide 6 of the household-anchor deck needed and didn't have before.
+  const incomeBracketTally = useMemo(() => {
+    const counts = new Map<string, number>();
+    withLivelihoodsData.forEach((h) => {
+      const b = h.livelihoods?.incomeBracket;
+      if (b) counts.set(b, (counts.get(b) || 0) + 1);
+    });
+    return INCOME_BRACKETS.map((b) => ({ name: b, value: counts.get(b) || 0 }));
+  }, [withLivelihoodsData]);
+  const incomeBracketRecordedCount = useMemo(
+    () => withLivelihoodsData.filter((h) => h.livelihoods?.incomeBracket).length,
+    [withLivelihoodsData]
+  );
+
+  const foodSecurityTally = useMemo(
+    () => tally(withLivelihoodsData.map((h) => h.livelihoods?.foodSecurity)),
+    [withLivelihoodsData]
+  );
+
+  const foodInsecureHouseholds = useMemo(
+    () => households.filter((h) => {
+      const v = (h.livelihoods?.foodSecurity || "").toLowerCase();
+      return v.includes("stressed") || v.includes("critical") || v.includes("crisis") || v.includes("severe");
+    }),
+    [households]
+  );
+
+  const cropTally = useMemo(() => {
+    const counts = new Map<string, number>();
+    withLivelihoodsData.forEach((h) => {
+      (h.livelihoods?.crops || []).forEach((crop) => {
+        const c = crop.trim();
+        if (!c) return;
+        counts.set(c, (counts.get(c) || 0) + 1);
+      });
+    });
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 8);
+  }, [withLivelihoodsData]);
+
+  const topIncomeSource = incomeTally.find((t) => t.name !== "Not recorded");
+  const topCrop = cropTally[0];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 p-6 lg:p-10 mt-16">
+    <main className="min-h-screen bg-linear-to-br from-gray-50 via-white to-purple-50/30 p-6 lg:p-10 mt-16">
       {/* 1. Executive Header */}
       <header className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -133,20 +161,8 @@ export default function LivelihoodsMonitor() {
               Livelihoods Monitor
             </h1>
             <p className="text-sm text-gray-500 mt-1.5 max-w-xl">
-              Financial inclusion and economic resilience tracking across {currentLocation}.
+              Aggregated from {total} household record{total === 1 ? "" : "s"} in {currentLocation}. Income, food security, and crops are entered manually per household — see a household's Livelihoods tab to add or correct data.
             </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="text-right mr-2 hidden md:block">
-              <p className="text-xs text-gray-400 font-medium">Reference FX</p>
-              <p className="text-sm font-bold text-gray-700 font-mono">1 USD = {USD_RATE.toLocaleString()} UGX</p>
-            </div>
-            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm">
-              <Download size={16} /> Export Report
-            </button>
-            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#7C3AED] rounded-xl hover:bg-[#6D28D9] transition shadow-sm">
-              <Share2 size={16} /> Share Dashboard
-            </button>
           </div>
         </div>
       </header>
@@ -185,186 +201,156 @@ export default function LivelihoodsMonitor() {
               <X size={14} /> Clear Filters
             </button>
           )}
+          {loading && <Loader2 size={16} className="animate-spin text-gray-400" />}
         </div>
       </section>
 
-      {/* 2. KPI Section */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Economic Indicators</span>
-        <DemoDataBadge label="Simulated — not connected to live data" />
-      </div>
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <EconStat
-          label="Avg Monthly Household Income"
-          value={avgIncome.toLocaleString()}
-          suffix="UGX"
-          trend="+5.2% YoY"
-          trendDir="up"
-          icon={Wallet}
-          intent="success"
-          subtext={`(${(avgIncome / USD_RATE).toFixed(0)} USD)`}
-        />
-        <EconStat
-          label="VSLA Participation"
-          value="42.8"
-          suffix="%"
-          trend="1.2k New Members"
-          trendDir="up"
-          icon={Users}
-          intent="brand"
-          subtext="Coverage of target population"
-        />
-        <EconStat
-          label="Capital Mobilized"
-          value={`${(totalSavings / 1000000).toFixed(0)}M`}
-          suffix="UGX"
-          trend="Target: 500M"
-          trendDir="neutral"
-          icon={PiggyBank}
-          intent="brand"
-          subtext="Total savings across VSLAs"
-        />
-        <EconStat
-          label="Loan Portfolio Health"
-          value={avgLoanRepayRate}
-          suffix="%"
-          trend="Threshold: 80%"
-          trendDir={Number(avgLoanRepayRate) < 85 ? "down" : "up"}
-          icon={AlertTriangle}
-          intent={Number(avgLoanRepayRate) < 80 ? "danger" : Number(avgLoanRepayRate) < 90 ? "warning" : "success"}
-          subtext="Average Loan Repayment Rate"
-        />
-      </section>
+      {total === 0 && !loading ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400">
+          No household records for {currentLocation} yet.
+        </div>
+      ) : (
+        <>
+          {/* 2. KPI Section */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <EconStat
+              label="Livelihoods Data Recorded"
+              value={coveragePct !== null ? `${coveragePct}%` : "—"}
+              icon={ClipboardList}
+              intent="brand"
+              subtext={`${withLivelihoodsData.length} of ${total} households`}
+            />
+            <EconStat
+              label="Most Common Income Source"
+              value={topIncomeSource ? topIncomeSource.name : "—"}
+              icon={Wallet}
+              intent="success"
+              subtext={topIncomeSource ? `${topIncomeSource.value} households` : "No data yet"}
+            />
+            <EconStat
+              label="Food-Insecure Households"
+              value={foodInsecureHouseholds.length.toString()}
+              icon={AlertTriangle}
+              intent={foodInsecureHouseholds.length > 0 ? "danger" : "success"}
+              subtext="Flagged 'stressed'/'critical' in food security"
+            />
+            <EconStat
+              label="Most-Grown Crop"
+              value={topCrop ? topCrop.name : "—"}
+              icon={Sprout}
+              intent="brand"
+              subtext={topCrop ? `${topCrop.value} households` : "No crop data yet"}
+            />
+          </section>
 
-      {/* 3. Deep-Dive Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mb-8">
+          {/* 3. Deep-Dive Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Chart A: Income Diversification */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Wallet size={20} className="text-purple-600" /> Income Source Distribution
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">As recorded on each household's Livelihoods tab.</p>
+              </div>
+              {incomeTally.length > 0 ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={incomeTally} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none">
+                        {incomeTally.map((entry, i) => (
+                          <Cell key={entry.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(value) => [`${value} household(s)`, 'Count']} contentStyle={{ borderRadius: 0, border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                      <Legend verticalAlign="bottom" height={60} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic py-16 text-center">No income data recorded yet.</p>
+              )}
+            </div>
 
-        {/* Chart A: Income Diversification */}
-        <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Wallet size={20} className="text-purple-600" />
-              Income Source Distribution
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Primary revenue streams and livelihood concentration risk.
-            </p>
-          </div>
+            {/* Chart A2: Income Bracket (ordinal tier, not just source) */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <TrendingUp size={20} className="text-purple-600" /> Monthly Income Bracket
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {incomeBracketRecordedCount} of {withLivelihoodsData.length} households with Livelihoods data have a recorded bracket.
+                </p>
+              </div>
+              {incomeBracketRecordedCount > 0 ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={incomeBracketTally} layout="vertical" margin={{ left: 0, right: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                      <XAxis type="number" allowDecimals={false} hide />
+                      <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip cursor={{ fill: 'transparent' }} formatter={(value) => [`${value} household(s)`, 'Count']} />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22} fill="#7C3AED" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic py-16 text-center">No income bracket data recorded yet.</p>
+              )}
+            </div>
 
-          <div className="h-[320px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={incomeData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={105}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {incomeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip
-                  formatter={(value) => [`${value}%`, 'Share']}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  itemStyle={{ fontSize: '13px', fontWeight: 600 }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={60}
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {/* Chart B: Food Security */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle size={20} className="text-orange-500" /> Food Security Status
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">As recorded on each household's Livelihoods tab.</p>
+              </div>
+              {foodSecurityTally.length > 0 ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={foodSecurityTally} layout="vertical" margin={{ left: 0, right: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                      <XAxis type="number" allowDecimals={false} hide />
+                      <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22} fill="#F59E0B" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic py-16 text-center">No food security data recorded yet.</p>
+              )}
+            </div>
 
-            {/* Center Metric */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[70%] text-center pointer-events-none">
-              <span className="text-3xl font-extrabold text-gray-900">{incomeData[0].value}%</span>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-1 max-w-[80px] leading-tight">
-                Primary Income
-              </p>
+            {/* Chart C: Top Crops */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Sprout size={20} className="text-green-600" /> Most-Grown Crops
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Households growing each crop, from recorded agricultural profiles.</p>
+              </div>
+              {cropTally.length > 0 ? (
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={cropTally} layout="vertical" margin={{ left: 0, right: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                      <XAxis type="number" allowDecimals={false} hide />
+                      <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={20} fill="#10B981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic py-16 text-center">No crop data recorded yet.</p>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* VSLA Portfolio Performance */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <PiggyBank size={18} className="text-pink-600" />
-              VSLA Group Performance
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Group health, capital accumulation, and loan repayment rates.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-3">Group Profile</th>
-                  <th className="px-6 py-3">Capital Pool (UGX)</th>
-                  <th className="px-6 py-3 text-center">LRR %</th>
-                  <th className="px-6 py-3 text-right">Risk Score</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {vslaGroups.map((group) => {
-                  const savingsPercent = Math.min(100, Math.round((group.savings / group.target) * 100));
-                  const isCritical = group.loanRepayRate < 0.8;
-                  const isAtRisk = group.loanRepayRate < 0.9 && group.loanRepayRate >= 0.8;
-                  const healthTag = isCritical ? { color: "red", text: "Critical Risk" }
-                    : isAtRisk ? { color: "orange", text: "Monitor" }
-                      : { color: "green", text: "High Performance" };
-
-                  return (
-                    <tr key={group.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900">{group.name}</div>
-                        <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                          <Users size={12} className="text-pink-500" /> {group.members} Members
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 tabular-nums">
-                        <div className="font-mono font-medium text-gray-700">
-                          {group.savings.toLocaleString()}
-                        </div>
-                        <div className="w-24 h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${isCritical ? "bg-red-500" : "bg-purple-600"}`}
-                            style={{ width: `${savingsPercent}%` }}
-                          />
-                        </div>
-                        <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                          <Target size={10} /> {savingsPercent}% of Target
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`text-sm font-bold ${healthTag.color === 'green' ? 'text-green-600' : healthTag.color === 'orange' ? 'text-orange-500' : 'text-red-600'}`}>
-                          {(group.loanRepayRate * 100).toFixed(1)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider 
-                            ${healthTag.color === 'red' ? 'bg-red-100 text-red-700' : healthTag.color === 'orange' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                          {healthTag.color === 'red' && <AlertTriangle size={10} />}
-                          {healthTag.text}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </main>
   );
 }

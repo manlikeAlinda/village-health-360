@@ -6,7 +6,7 @@ import {
   Settings, Users, Database, Globe, Trash2, PlusCircle, Check, X,
   Bell, Search, Zap, Loader2, Shield, Key, Mail, Clock, Eye, EyeOff,
   Download, Upload, RefreshCw, AlertTriangle, CheckCircle2, Info,
-  ChevronDown, ChevronRight, Lock, Unlock, Server, Wifi, WifiOff,
+  ChevronDown, ChevronRight, Lock, Unlock, Server, Hammer,
   Smartphone, Monitor, HardDrive, Cloud, FileText, AlertCircle,
   type LucideIcon, Save, RotateCcw, ExternalLink, Copy, Palette,
   Languages, MapPin, Building2, UserCog, ShieldCheck, Activity
@@ -42,8 +42,6 @@ interface Integration {
   id: string;
   name: string;
   provider: string;
-  status: 'connected' | 'disconnected' | 'error';
-  lastSync?: string;
   description: string;
 }
 
@@ -66,10 +64,10 @@ const mockModules: Module[] = [
 ];
 
 const mockIntegrations: Integration[] = [
-  { id: "i1", name: "DHIS2 Uganda", provider: "Ministry of Health", status: "connected", lastSync: "5 minutes ago", description: "National health information system" },
-  { id: "i2", name: "Mobile Money Gateway", provider: "MTN Uganda", status: "disconnected", description: "SMS/USSD communication channel" },
-  { id: "i3", name: "Weather API", provider: "OpenWeather", status: "connected", lastSync: "1 hour ago", description: "Climate data for disease correlation" },
-  { id: "i4", name: "CRVS System", provider: "NIRA", status: "error", description: "Civil registration for birth/death records" },
+  { id: "i1", name: "DHIS2 Uganda", provider: "Ministry of Health", description: "National health information system" },
+  { id: "i2", name: "Mobile Money Gateway", provider: "MTN Uganda", description: "SMS/USSD communication channel" },
+  { id: "i3", name: "Weather API", provider: "OpenWeather", description: "Climate data for disease correlation" },
+  { id: "i4", name: "CRVS System", provider: "NIRA", description: "Civil registration for birth/death records" },
 ];
 
 // --- Utility Components ---
@@ -277,8 +275,6 @@ function describeAuditEntry(log: AuditLogEntry): string {
 function OverviewTab() {
   const activeUsers = mockUsers.filter(u => u.status === "Active").length;
   const activeModules = mockModules.filter(m => m.status).length;
-  const connectedIntegrations = mockIntegrations.filter(i => i.status === "connected").length;
-
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(true);
   const [auditPermissionError, setAuditPermissionError] = useState(false);
@@ -302,7 +298,7 @@ function OverviewTab() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users} label="Active Users" value={activeUsers} subtext={`of ${mockUsers.length} total`} variant="success" />
         <StatCard icon={Zap} label="Active Modules" value={activeModules} subtext={`of ${mockModules.length} available`} variant="default" />
-        <StatCard icon={Cloud} label="Integrations" value={connectedIntegrations} subtext={`${mockIntegrations.length - connectedIntegrations} disconnected`} variant="warning" />
+        <StatCard icon={Cloud} label="Integrations" value={0} subtext={`${mockIntegrations.length} under construction`} variant="warning" />
         <StatCard icon={Shield} label="Security Score" value="92%" subtext="Last audit: Today" variant="success" />
       </div>
 
@@ -683,36 +679,24 @@ function IntegrationsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
-        <p className="text-sm text-amber-800">No integration below has a live connection configured. Statuses shown are simulated for demonstration only.</p>
+        <p className="text-sm text-amber-800">No external system integration exists yet. Every item below is a planned connector, not a live one — see the Village Health 360 roadmap.</p>
         <DemoDataBadge />
       </div>
       {mockIntegrations.map((integration) => (
         <div key={integration.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${integration.status === "connected" ? "bg-green-50 text-green-600" :
-                integration.status === "error" ? "bg-red-50 text-red-600" :
-                  "bg-gray-100 text-gray-400"
-              }`}>
-              {integration.status === "connected" ? <Wifi size={20} /> :
-                integration.status === "error" ? <AlertCircle size={20} /> :
-                  <WifiOff size={20} />}
+            <div className="p-3 rounded-xl bg-gray-100 text-gray-400">
+              <Hammer size={20} />
             </div>
             <div>
               <p className="font-medium text-gray-900">{integration.name}</p>
               <p className="text-sm text-gray-500">{integration.provider} • {integration.description}</p>
-              {integration.lastSync && (
-                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                  <RefreshCw size={10} /> Last sync: {integration.lastSync}
-                </p>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={integration.status === "connected" ? "success" : integration.status === "error" ? "danger" : "default"}>
-              {integration.status === "connected" ? "Connected" : integration.status === "error" ? "Error" : "Disconnected"}
-            </Badge>
-            <button className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
-              {integration.status === "connected" ? "Configure" : "Connect"}
+            <Badge variant="default">Under Construction</Badge>
+            <button disabled className="px-3 py-1.5 text-xs font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
+              Not available
             </button>
           </div>
         </div>

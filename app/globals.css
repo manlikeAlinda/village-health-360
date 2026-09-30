@@ -22,11 +22,18 @@
 
 body {
   /* FORCE Light Mode Background */
-  background: #F7F8F9; 
+  background: #F7F8F9;
   color: #111827; /* Gray-900 */
-  
+
   /* Modern font stack */
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Square edges everywhere — including third-party CSS (Leaflet controls,
+   popups) and inline styles (Recharts tooltips) that Tailwind's own
+   borderRadius scale can't reach. */
+*, *::before, *::after {
+  border-radius: 0 !important;
 }

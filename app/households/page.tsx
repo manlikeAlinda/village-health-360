@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Search, Filter, Plus, Edit2, Trash2,
-  MapPin, Droplets, Activity, X, MoreHorizontal,
-  ChevronRight, AlertCircle, CalendarClock, Info,
+  MapPin, X, MoreHorizontal,
+  ChevronRight, AlertCircle, Info,
   Save, AlertTriangle, Users, TrendingUp, ChevronDown,
-  Download, Share2, Loader2, ShieldCheck, ShieldX, Clock
+  Download, Share2, Loader2, ShieldCheck, ShieldX, Clock, ScanSearch, UserCheck,
+  ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft
 } from "lucide-react";
-import { useHouseholdsStore } from "../store/householdsStore";
+import { useHouseholdsStore, buildQuery, HouseholdSortField } from "../store/householdsStore";
 import { Household, HouseholdInput } from "../lib/types";
-import DemoDataBadge from "../components/ui/DemoDataBadge";
-import { getAllDistricts, getSubcounties, getDistrictCenter } from "../lib/adminData";
+import NinLookupPanel from "../components/ui/NinLookupPanel";
+import type { HomeLocation } from "../lib/mockGovSources";
+import { getAllDistricts, getSubcounties, getCounties, getParishes, getDistrictCenter, slugify, nameFromSlug } from "../lib/adminData";
 import LocationPicker from "../components/ui/LocationPicker";
 import SyncStatusBar from "../components/ui/SyncStatusBar";
 import { useAuth } from "../components/providers/AuthProvider";
+import { api } from "../lib/api";
 
 // Filter Select Component
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
@@ -37,17 +40,84 @@ const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) 
   </div>
 );
 
+// Clickable column header for the four server-sortable fields, with a
+// direction indicator. Non-sortable columns (derived or unindexed) render as
+// plain <th> instead of using this.
+function SortableTh({
+  field,
+  sortBy,
+  sortDir,
+  onSort,
+  children,
+}: {
+  field: HouseholdSortField;
+  sortBy: HouseholdSortField;
+  sortDir: "asc" | "desc";
+  onSort: (field: HouseholdSortField) => void;
+  children: ReactNode;
+}) {
+  const active = sortBy === field;
+  const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className="px-6 py-4">
+      <button
+        onClick={() => onSort(field)}
+        className={`flex items-center gap-1 uppercase tracking-wider text-xs font-bold ${active ? "text-purple-700" : "text-gray-500 hover:text-gray-700"}`}
+      >
+        {children}
+        <Icon size={12} />
+      </button>
+    </th>
+  );
+}
+
 const SUPERVISOR_ROLES = ["Super Admin", "District Admin"];
+const PAGE_SIZE = 25;
+const PLACEHOLDER = "—";
+
+// --- Households-table field derivations ---
+// The member-roster editor (household detail page) never resynced the
+// top-level members/under5Count fields when it grew/shrank householdMembers,
+// so those two scalars can no longer be trusted once a roster exists.
+// householdMembers, when present, is authoritative; the scalar is the
+// fallback only for the (common, pre-roster-feature) records that never got
+// one. See the households-table audit for the full root-cause trace.
+function getMemberCount(h: Household): number {
+  return h.householdMembers && h.householdMembers.length > 0 ? h.householdMembers.length : h.members;
+}
+function getUnder5Count(h: Household): number {
+  return h.householdMembers && h.householdMembers.length > 0
+    ? h.householdMembers.filter((m) => m.age < 5).length
+    : h.under5Count ?? 0;
+}
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return PLACEHOLDER;
+  // Explicit locale — never leave this unspecified (see this project's own
+  // past bug where an unspecified locale produced lakh-style number
+  // grouping); en-GB gives day-month-year, the convention this app's other
+  // Uganda-context surfaces already use.
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+function resolveLocationLabels(h: Household, allDistricts: string[]): { district: string; subcounty: string } {
+  const district = nameFromSlug(allDistricts, h.location?.district_id) || PLACEHOLDER;
+  const subcounty = district !== PLACEHOLDER ? nameFromSlug(getSubcounties(district), h.location?.subcounty_id) || PLACEHOLDER : PLACEHOLDER;
+  return { district, subcounty };
+}
 
 export default function HouseholdsPage() {
-  const { households, loading, error, fetchAll, remove, pendingIds, reviewHousehold } = useHouseholdsStore();
+  const { households, loading, error, total, fetchAll, remove, pendingIds, reviewHousehold } = useHouseholdsStore();
   const { role } = useAuth();
   const canReview = !!role && SUPERVISOR_ROLES.includes(role);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterRisk, setFilterRisk] = useState("All");
   const [filterReview, setFilterReview] = useState("All");
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<HouseholdSortField>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // --- Modal States ---
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -66,14 +136,73 @@ export default function HouseholdsPage() {
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
 
-  // Server-side scoping by district/subcounty/review status; search + risk filtered client-side below.
+  // Debounce the free-text search before it drives a server request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Any change to a filter or sort invalidates the current page.
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDistrict, selectedSubcounty, filterReview, filterRisk, debouncedSearch, sortBy, sortDir]);
+
+  // Server-side scoping, sorting and pagination — every filter shown in the
+  // UI is now a real query param, not a client-side re-filter of an
+  // already-fetched page (which would silently drop matches once paginated).
   useEffect(() => {
     fetchAll({
       district: selectedDistrict || undefined,
       subcounty: selectedSubcounty || undefined,
       reviewStatus: filterReview !== "All" ? filterReview : undefined,
+      riskLevel: filterRisk !== "All" ? filterRisk : undefined,
+      search: debouncedSearch || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+      sortBy,
+      sortDir,
     });
-  }, [selectedDistrict, selectedSubcounty, filterReview, fetchAll]);
+  }, [selectedDistrict, selectedSubcounty, filterReview, filterRisk, debouncedSearch, page, sortBy, sortDir, fetchAll]);
+
+  // KPI cards need true totals across every matching record, not just the
+  // current 25-row page — a second, unpaginated request against the same
+  // filters (same pattern the Health/WASH/Livelihoods dashboards already
+  // use), kept separate from the store's paginated `households` state.
+  const [scopeStats, setScopeStats] = useState<{ total: number; critical: number; newThisMonth: number; pendingReview: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ data: Household[] }>(
+        `/api/households${buildQuery({
+          district: selectedDistrict || undefined,
+          subcounty: selectedSubcounty || undefined,
+          reviewStatus: filterReview !== "All" ? filterReview : undefined,
+          riskLevel: filterRisk !== "All" ? filterRisk : undefined,
+          search: debouncedSearch || undefined,
+        })}`
+      )
+      .then(({ data }) => {
+        if (cancelled) return;
+        const now = new Date();
+        setScopeStats({
+          total: data.length,
+          critical: data.filter((h) => h.riskLevel === "Critical").length,
+          newThisMonth: data.filter((h) => {
+            const created = new Date(h.createdAt);
+            return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+          }).length,
+          pendingReview: data.filter((h) => h.reviewStatus === "pending").length,
+        });
+      })
+      .catch(() => {
+        // Supplementary KPI data — the table's own error banner already
+        // covers a primary fetch failure, so this fails silently rather
+        // than showing a second error for the same underlying problem.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDistrict, selectedSubcounty, filterReview, filterRisk, debouncedSearch]);
 
   const handleApprove = async (hh: Household) => {
     setIsReviewing(hh.id);
@@ -140,24 +269,19 @@ export default function HouseholdsPage() {
     }
   };
 
-  // --- Filtering Logic (search + risk, client-side over the fetched scope) ---
-  const filteredData = households.filter((item) => {
-    const matchesSearch = item.head.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.village.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRisk = filterRisk === "All" || item.riskLevel === filterRisk;
-    return matchesSearch && matchesRisk;
-  });
+  // households is now the current server page already — district, subcounty,
+  // review status, risk and search are all real query params (see the
+  // fetchAll effect above), not a second client-side filter over a page
+  // that's already been sliced server-side.
+  const totalPages = total ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
 
-  // --- Real Stats (derived from fetched data, not fabricated) ---
-  const criticalCount = households.filter(h => h.riskLevel === "Critical").length;
-  const newThisMonth = useMemo(() => {
-    const now = new Date();
-    return households.filter(h => {
-      const created = new Date(h.createdAt);
-      return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
-    }).length;
-  }, [households]);
+  const toggleSort = (field: HouseholdSortField) => {
+    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 p-6 lg:p-10 mt-16">
@@ -290,7 +414,7 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{households.length.toLocaleString()}</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{(total ?? 0).toLocaleString()}</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">Households {selectedDistrict ? `in ${currentLocation}` : "(All Districts)"}</p>
             <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Registered beneficiaries</p>
           </div>
@@ -303,7 +427,7 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{criticalCount.toLocaleString()}</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{(scopeStats?.critical ?? 0).toLocaleString()}</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">Critical Priority</p>
             <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Require immediate attention</p>
           </div>
@@ -311,15 +435,14 @@ export default function HouseholdsPage() {
 
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex justify-between items-start">
-            <div className="p-2.5 rounded-xl border bg-green-50 text-green-700 border-green-200">
-              <Activity size={20} />
+            <div className="p-2.5 rounded-xl border bg-amber-50 text-amber-700 border-amber-200">
+              <Clock size={20} />
             </div>
-            <DemoDataBadge label="Not tracked yet" />
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">—</h4>
-            <p className="text-sm font-medium text-gray-500 mt-0.5">Visit Compliance</p>
-            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Needs a visit-schedule model (not built yet)</p>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{(scopeStats?.pendingReview ?? 0).toLocaleString()}</h4>
+            <p className="text-sm font-medium text-gray-500 mt-0.5">Pending Review</p>
+            <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Awaiting supervisor approval</p>
           </div>
         </div>
 
@@ -330,7 +453,7 @@ export default function HouseholdsPage() {
             </div>
           </div>
           <div className="mt-4">
-            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">+{newThisMonth.toLocaleString()}</h4>
+            <h4 className="text-2xl font-bold text-gray-900 tracking-tight">+{(scopeStats?.newThisMonth ?? 0).toLocaleString()}</h4>
             <p className="text-sm font-medium text-gray-500 mt-0.5">New This Month</p>
             <p className="text-[10px] text-gray-400 mt-2 border-t border-gray-50 pt-2">Registered in the current calendar month</p>
           </div>
@@ -358,146 +481,114 @@ export default function HouseholdsPage() {
             <Loader2 size={28} className="animate-spin text-purple-500 mb-3" />
             <p className="text-gray-500 text-sm">Loading households…</p>
           </div>
-        ) : filteredData.length > 0 ? (
+        ) : households.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-bold tracking-wider">
-                  <th className="px-6 py-4">Household Profile</th>
-                  <th className="px-6 py-4">Location</th>
-                  <th className="px-6 py-4">Risk Triage</th>
-                  <th className="px-6 py-4">Intervention</th>
-                  <th className="px-6 py-4">Last Visit</th>
+                  <SortableTh field="head" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort}>Household</SortableTh>
+                  <th className="px-6 py-4">District</th>
+                  <th className="px-6 py-4">Sub-county</th>
+                  <th className="px-6 py-4">Parish</th>
+                  <th className="px-6 py-4">Village</th>
+                  <th className="px-6 py-4 text-right">Members</th>
+                  <th className="px-6 py-4 text-right">Under-5s</th>
+                  <SortableTh field="createdAt" sortBy={sortBy} sortDir={sortDir} onSort={toggleSort}>Registered</SortableTh>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredData.map((hh) => (
-                  <tr key={hh.id} className="group hover:bg-purple-50/30 transition-colors">
-                    {/* Identity */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-white shadow-sm flex items-center justify-center text-gray-600 font-bold text-xs">
-                          {hh.head.substring(0, 2).toUpperCase()}
+                {households.map((hh) => {
+                  const { district, subcounty } = resolveLocationLabels(hh, allDistricts);
+                  return (
+                    <tr key={hh.id} className="group hover:bg-purple-50/30 transition-colors">
+                      {/* Household: head + record reference (truncated, not the raw UUID) */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-white shadow-sm flex items-center justify-center text-gray-600 font-bold text-xs shrink-0">
+                            {hh.head.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 text-sm flex items-center gap-2 flex-wrap">
+                              {hh.head}
+                              {pendingIds.has(hh.id) && (
+                                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200" title="Created offline — not yet synced to the server">
+                                  Pending Sync
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-400 font-mono mt-0.5" title={hh.id}>
+                              #{hh.id.slice(0, 8)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm flex items-center gap-2 flex-wrap">
-                            {hh.head}
-                            {pendingIds.has(hh.id) && (
-                              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
-                                Pending Sync
-                              </span>
-                            )}
-                            {hh.reviewStatus === "pending" && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                <Clock size={9} /> Pending Review
-                              </span>
-                            )}
-                            {hh.reviewStatus === "rejected" && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200" title={hh.rejectionReason}>
-                                <ShieldX size={9} /> Rejected
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500 font-mono mt-0.5 flex items-center gap-2">
-                            {hh.id}
-                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                            {hh.members} Members
-                          </p>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-gray-700">{district}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{subcounty}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{hh.location?.parish_id || PLACEHOLDER}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        <span className="inline-flex items-center gap-1.5"><MapPin size={12} className="text-gray-400" /> {hh.location?.village_id || PLACEHOLDER}</span>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-gray-700 text-right tabular-nums">{getMemberCount(hh)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700 text-right tabular-nums">{getUnder5Count(hh)}</td>
+
+                      <td className="px-6 py-4 text-xs text-gray-500">{formatDate(hh.createdAt)}</td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <Link
+                            href={`/households/${hh.id}`}
+                            className="text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"
+                          >
+                            View <ChevronRight size={12} />
+                          </Link>
+
+                          {canReview && hh.reviewStatus === "pending" && (
+                            <>
+                              <div className="h-4 w-px bg-gray-200 mx-1"></div>
+                              <button
+                                onClick={() => handleApprove(hh)}
+                                disabled={isReviewing === hh.id}
+                                className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-40"
+                                title="Approve"
+                              >
+                                {isReviewing === hh.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                              </button>
+                              <button
+                                onClick={() => openRejectModal(hh)}
+                                disabled={isReviewing === hh.id}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                                title="Reject"
+                              >
+                                <ShieldX size={14} />
+                              </button>
+                            </>
+                          )}
+
+                          <div className="h-4 w-px bg-gray-200 mx-1"></div>
+
+                          <button
+                            onClick={() => handleEditClick(hh)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Edit Record"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(hh)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete Record"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Location */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                          <MapPin size={14} className="text-gray-400" /> {hh.village}
-                        </div>
-                        <p className="text-xs text-gray-500 pl-5">{hh.parish} Parish</p>
-                      </div>
-                    </td>
-
-                    {/* Risk Badge */}
-                    <td className="px-6 py-4">
-                      <RiskBadge level={hh.riskLevel} />
-                    </td>
-
-                    {/* Indicators */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
-                            {hh.program}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Droplets size={12} className={hh.waterSource.includes("Unsafe") ? "text-amber-500" : "text-blue-500"} />
-                          {hh.waterSource}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Meta */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <CalendarClock size={14} className="text-gray-400" />
-                        {hh.lastVisit || "No visits logged"}
-                      </div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <Link
-                          href={`/households/${hh.id}`}
-                          className="text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"
-                        >
-                          View <ChevronRight size={12} />
-                        </Link>
-
-                        {canReview && hh.reviewStatus === "pending" && (
-                          <>
-                            <div className="h-4 w-px bg-gray-200 mx-1"></div>
-                            <button
-                              onClick={() => handleApprove(hh)}
-                              disabled={isReviewing === hh.id}
-                              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors disabled:opacity-40"
-                              title="Approve"
-                            >
-                              {isReviewing === hh.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                            </button>
-                            <button
-                              onClick={() => openRejectModal(hh)}
-                              disabled={isReviewing === hh.id}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
-                              title="Reject"
-                            >
-                              <ShieldX size={14} />
-                            </button>
-                          </>
-                        )}
-
-                        <div className="h-4 w-px bg-gray-200 mx-1"></div>
-
-                        <button
-                          onClick={() => handleEditClick(hh)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Edit Record"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(hh)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Delete Record"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -505,10 +596,30 @@ export default function HouseholdsPage() {
           <EmptyState clearFilters={() => { setSearchTerm(""); setFilterRisk("All"); }} />
         )}
 
-        {/* Footer */}
-        {filteredData.length > 0 && (
+        {/* Footer: real server-side pagination */}
+        {households.length > 0 && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <p>Showing <span className="font-bold text-gray-900">{filteredData.length}</span> of {households.length} records</p>
+            <p>
+              Showing <span className="font-bold text-gray-900">{(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + households.length}</span> of{" "}
+              <span className="font-bold text-gray-900">{total ?? households.length}</span> records
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 font-semibold text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <span className="px-2 font-semibold text-gray-700">Page {page} of {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || loading}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 font-semibold text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
         )}
       </section>
@@ -518,7 +629,7 @@ export default function HouseholdsPage() {
       {/* Registration Modal */}
       {isRegisterOpen && (
         <ModalBase title="New Household Registration" onClose={() => setIsRegisterOpen(false)}>
-          <HouseholdForm onClose={() => setIsRegisterOpen(false)} allDistricts={allDistricts} />
+          <HouseholdForm onClose={() => setIsRegisterOpen(false)} />
         </ModalBase>
       )}
 
@@ -529,7 +640,6 @@ export default function HouseholdsPage() {
             initialData={selectedHousehold}
             onClose={() => setIsEditOpen(false)}
             isEdit
-            allDistricts={allDistricts}
           />
         </ModalBase>
       )}
@@ -658,10 +768,14 @@ function ModalBase({ title, onClose, children }: { title: string, onClose: () =>
   );
 }
 
-function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: { onClose: () => void, initialData?: Household, isEdit?: boolean, allDistricts: string[] }) {
+function HouseholdForm({ onClose, initialData, isEdit = false }: { onClose: () => void, initialData?: Household, isEdit?: boolean }) {
   const { create, update } = useHouseholdsStore();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isLookupOpen, setIsLookupOpen] = useState(false);
+
+  const allDistricts = useMemo(() => getAllDistricts(), []);
+  const initialDistrict = nameFromSlug(allDistricts, initialData?.location?.district_id);
 
   const [form, setForm] = useState({
     head: initialData?.head || "",
@@ -669,37 +783,105 @@ function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: {
     nationalId: initialData?.nationalId || "",
     members: initialData?.members ?? 1,
     under5Count: initialData?.under5Count ?? 0,
-    district: initialData?.district || "",
-    subcounty: initialData?.subcounty || "",
-    village: initialData?.village || "",
-    parish: initialData?.parish || "",
+    district: initialDistrict,
+    county: nameFromSlug(getCounties(initialDistrict), initialData?.location?.county_id),
+    subcounty: nameFromSlug(getSubcounties(initialDistrict), initialData?.location?.subcounty_id),
+    parish: initialData?.location?.parish_id || "",
+    village: initialData?.location?.village_id || "",
     riskLevel: initialData?.riskLevel || "Low",
     healthStatus: initialData?.healthStatus || "Stable",
     waterSource: initialData?.waterSource || "Borehole (Safe)",
     program: initialData?.program || "Routine Monitoring",
-    lat: initialData?.lat,
-    lng: initialData?.lng,
+    lat: initialData?.location?.latitude,
+    lng: initialData?.location?.longitude,
+    capturedAt: initialData?.location?.captured_at,
   });
 
+  const formCounties = useMemo(() => getCounties(form.district || null), [form.district]);
   const formSubcounties = useMemo(() => getSubcounties(form.district || null), [form.district]);
+  const formParishes = useMemo(() => getParishes(form.district || null, form.subcounty || null), [form.district, form.subcounty]);
   const mapCenter = useMemo(() => getDistrictCenter(form.district || null), [form.district]);
   const locationValue = form.lat != null && form.lng != null ? { lat: form.lat, lng: form.lng } : null;
 
   const setField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  // Autofill from the resolved NIN identity's registered address, in the
+  // same step as the name autofill. Each relational field is resolved
+  // against the existing district/county/subcounty/parish reference data
+  // (adminData.ts) and rejected — not inserted as free text — on a mismatch.
+  // A level with no reference data at all for this district (most counties,
+  // almost all parishes — see DATA_SOURCES.md) is passed through rather than
+  // rejected, since there's nothing to validate it against.
+  const handleApplyIdentity = (name: string, loc: HomeLocation) => {
+    setField("head", name);
+
+    const district = loc.district.trim();
+    const county = loc.county.trim();
+    const subcounty = loc.subcounty.trim();
+    const parish = loc.parish.trim();
+    const village = loc.village.trim();
+
+    if (!getAllDistricts().includes(district)) {
+      setFormError(`National ID location data did not resolve: "${district}" is not a recognized district.`);
+      return;
+    }
+    const countyOptions = getCounties(district);
+    if (countyOptions.length > 0 && !countyOptions.includes(county)) {
+      setFormError(`National ID location data did not resolve: "${county}" is not a recognized county of ${district}.`);
+      return;
+    }
+    const subcountyOptions = getSubcounties(district);
+    if (!subcountyOptions.includes(subcounty)) {
+      setFormError(`National ID location data did not resolve: "${subcounty}" is not a recognized subcounty of ${district}.`);
+      return;
+    }
+    const parishOptions = getParishes(district, subcounty);
+    if (parishOptions.length > 0 && !parishOptions.includes(parish)) {
+      setFormError(`National ID location data did not resolve: "${parish}" is not a recognized parish of ${subcounty}.`);
+      return;
+    }
+
+    setFormError(null);
+    setField("district", district);
+    setField("county", county);
+    setField("subcounty", subcounty);
+    setField("parish", parish);
+    setField("village", village);
+  };
+
   const handleSubmit = async () => {
-    if (!form.head.trim() || !form.district || !form.village.trim() || !form.parish.trim()) {
-      setFormError("Head of household, district, village, and parish are required.");
+    if (!form.head.trim()) {
+      setFormError("Run an NIN lookup and apply the resolved identity before saving.");
+      return;
+    }
+    if (!form.district || !form.parish.trim() || !form.village.trim()) {
+      setFormError("District, parish, and village are required.");
       return;
     }
     setSubmitting(true);
     setFormError(null);
     try {
       const payload: HouseholdInput = {
-        ...form,
+        head: form.head,
+        phone: form.phone,
+        nationalId: form.nationalId,
         members: Number(form.members),
         under5Count: Number(form.under5Count),
+        riskLevel: form.riskLevel,
+        healthStatus: form.healthStatus,
+        waterSource: form.waterSource,
+        program: form.program,
+        location: {
+          district_id: slugify(form.district),
+          county_id: form.county ? slugify(form.county) : undefined,
+          subcounty_id: form.subcounty ? slugify(form.subcounty) : undefined,
+          parish_id: form.parish.trim(),
+          village_id: form.village.trim(),
+          latitude: form.lat,
+          longitude: form.lng,
+          captured_at: form.capturedAt,
+        },
       };
       if (isEdit && initialData) {
         await update(initialData.id, payload);
@@ -723,31 +905,49 @@ function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: {
           </div>
         )}
         <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          {/* Form Section 1 */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-[10px]">1</span>
-              Identity & Demographics
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup label="Head of Household" placeholder="Full Name (Last, First)" value={form.head} onChange={(v) => setField("head", v)} />
-              <InputGroup label="Phone Number" placeholder="+256 7..." type="tel" value={form.phone} onChange={(v) => setField("phone", v)} />
-              <InputGroup label="National ID / NIN" placeholder="CM..." value={form.nationalId} onChange={(v) => setField("nationalId", v)} />
-              <div className="grid grid-cols-2 gap-4">
-                <InputGroup label="Members (Total)" placeholder="0" type="number" value={String(form.members)} onChange={(v) => setField("members", Number(v) || 0)} />
-                <InputGroup label="Under 5s" placeholder="0" type="number" value={String(form.under5Count)} onChange={(v) => setField("under5Count", Number(v) || 0)} />
+            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider">Identity Verification</h3>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5">National ID / NIN</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={form.nationalId ?? ""}
+                  onChange={(e) => setField("nationalId", e.target.value)}
+                  placeholder="CM..."
+                  className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsLookupOpen((o) => !o)}
+                  disabled={!form.nationalId?.trim()}
+                  title="Preview cross-agency lookup (sample interface)"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 hover:bg-purple-50 hover:text-purple-700 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ScanSearch size={14} /> {isLookupOpen ? "Hide Lookup" : "Lookup"}
+                </button>
               </div>
             </div>
+            {form.head.trim() && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2">
+                <UserCheck size={16} className="text-emerald-600 shrink-0" />
+                <span className="text-sm font-bold text-emerald-800">{form.head}</span>
+                <span className="text-xs text-emerald-600">resolved as head of household</span>
+              </div>
+            )}
           </div>
+
+          {isLookupOpen && form.nationalId?.trim() && (
+            <NinLookupPanel
+              id={form.nationalId.trim()}
+              onApplyIdentity={handleApplyIdentity}
+            />
+          )}
 
           <div className="h-px bg-gray-100" />
 
-          {/* Form Section 2 */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-[10px]">2</span>
-              Location & Vulnerability
-            </h3>
+            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider">Location</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">District</label>
@@ -756,7 +956,9 @@ function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: {
                   value={form.district}
                   onChange={(e) => {
                     setField("district", e.target.value);
+                    setField("county", "");
                     setField("subcounty", "");
+                    setField("parish", "");
                   }}
                 >
                   <option value="">Select District...</option>
@@ -764,51 +966,84 @@ function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: {
                 </select>
               </div>
               <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">County</label>
+                {formCounties.length > 0 ? (
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                    value={form.county}
+                    onChange={(e) => setField("county", e.target.value)}
+                    disabled={!form.district}
+                  >
+                    <option value="">{form.district ? "Select County..." : "Select district first"}</option>
+                    {formCounties.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={form.county}
+                    onChange={(e) => setField("county", e.target.value)}
+                    disabled={!form.district}
+                    placeholder={form.district ? "No reference data — type it in" : "Select district first"}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-400"
+                  />
+                )}
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Subcounty</label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400"
                   value={form.subcounty}
-                  onChange={(e) => setField("subcounty", e.target.value)}
+                  onChange={(e) => {
+                    setField("subcounty", e.target.value);
+                    setField("parish", "");
+                  }}
                   disabled={!form.district}
                 >
                   <option value="">{form.district ? "Select Subcounty..." : "Select district first"}</option>
                   {formSubcounties.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <InputGroup label="Village Name" placeholder="e.g. Bwobo" value={form.village} onChange={(v) => setField("village", v)} />
-              <InputGroup label="Parish" placeholder="e.g. Patiko" value={form.parish} onChange={(v) => setField("parish", v)} />
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Parish</label>
+                {formParishes.length > 0 ? (
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                    value={form.parish}
+                    onChange={(e) => setField("parish", e.target.value)}
+                    disabled={!form.subcounty}
+                  >
+                    <option value="">{form.subcounty ? "Select Parish..." : "Select subcounty first"}</option>
+                    {formParishes.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={form.parish}
+                    onChange={(e) => setField("parish", e.target.value)}
+                    disabled={!form.district}
+                    placeholder={form.district ? "e.g. Patiko — no reference data, type it in" : "Select district first"}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-400"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Village</label>
+                <input
+                  type="text"
+                  value={form.village}
+                  onChange={(e) => setField("village", e.target.value)}
+                  placeholder="e.g. Bwobo"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors"
+                />
+              </div>
 
               <div className="md:col-span-2">
                 <LocationPicker
                   value={locationValue}
                   center={mapCenter}
-                  onChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng }))}
+                  onChange={(lat, lng) => setForm((f) => ({ ...f, lat, lng, capturedAt: new Date().toISOString() }))}
                 />
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">Initial Risk Assessment (HEA Score)</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {(["Low", "Medium", "High", "Critical"] as const).map((level) => (
-                    <RadioCard key={level} label={level} checked={form.riskLevel === level} onSelect={() => setField("riskLevel", level)} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-100" />
-
-          {/* Form Section 3 */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-[10px]">3</span>
-              Health & Intervention
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup label="Health Status" placeholder="e.g. Pregnant Mother" value={form.healthStatus} onChange={(v) => setField("healthStatus", v)} />
-              <InputGroup label="Water Source" placeholder="e.g. Borehole (Safe)" value={form.waterSource} onChange={(v) => setField("waterSource", v)} />
-              <InputGroup label="Program" placeholder="e.g. Cash Transfer" value={form.program} onChange={(v) => setField("program", v)} />
             </div>
           </div>
         </form>
@@ -835,50 +1070,3 @@ function HouseholdForm({ onClose, initialData, isEdit = false, allDistricts }: {
   );
 }
 
-function RiskBadge({ level }: { level: string }) {
-  const styles = {
-    Critical: "bg-red-50 text-red-700 ring-red-600/20",
-    High: "bg-orange-50 text-orange-800 ring-orange-600/20",
-    Medium: "bg-yellow-50 text-yellow-800 ring-yellow-600/20",
-    Low: "bg-green-50 text-green-700 ring-green-600/20",
-  };
-
-  const style = styles[level as keyof typeof styles] || styles.Low;
-
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold ring-1 ring-inset ${style}`}>
-      {level === 'Critical' && <AlertCircle size={10} />}
-      {level.toUpperCase()}
-    </span>
-  );
-}
-
-function InputGroup({ label, placeholder, type = "text", value, onChange }: { label: string, placeholder: string, type?: string, value?: string, onChange: (value: string) => void }) {
-  return (
-    <div>
-      <label className="block text-xs font-bold text-gray-700 mb-1.5">{label}</label>
-      <input
-        type={type}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-colors"
-        placeholder={placeholder}
-      />
-    </div>
-  );
-}
-
-function RadioCard({ label, checked, onSelect }: { label: string, checked?: boolean, onSelect: () => void }) {
-  const colorMap: Record<string, string> = {
-    Low: "border-gray-200 hover:border-purple-300",
-    Medium: "border-yellow-200 bg-yellow-50/50",
-    High: "border-orange-200 bg-orange-50/50",
-    Critical: "border-red-200 bg-red-50/50",
-  };
-  return (
-    <label className={`cursor-pointer border rounded-lg p-3 text-center transition-all hover:shadow-sm ${colorMap[label]} ${checked ? 'ring-2 ring-purple-500 border-purple-500' : ''}`}>
-      <input type="radio" name="risk" className="sr-only" checked={checked} onChange={onSelect} />
-      <span className="text-xs font-bold text-gray-700">{label}</span>
-    </label>
-  );
-}

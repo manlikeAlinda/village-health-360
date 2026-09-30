@@ -7,7 +7,7 @@ import {
     Menu, Search, Bell, ChevronDown, Home, ChevronRight, Settings,
     X, User, LogOut, HelpCircle, Command, Moon, Sun, Globe,
     CheckCircle2, AlertTriangle, Info, Clock, ExternalLink,
-    LayoutDashboard, Stethoscope, Droplets, Wallet, Users, FileText, Map
+    LayoutDashboard, Stethoscope, Wallet, Users, FileText, Map
 } from "lucide-react";
 
 // --- Design System Constants ---
@@ -17,8 +17,7 @@ const PRIMARY_BLUE = "#004AAD";
 const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Map Intelligence", path: "/map", icon: Map },
-    { name: "Health", path: "/health", icon: Stethoscope },
-    { name: "WASH", path: "/wash", icon: Droplets },
+    { name: "Health & WASH", path: "/health", icon: Stethoscope },
     { name: "Livelihoods", path: "/livelihoods", icon: Wallet },
     { name: "Households", path: "/households", icon: Users },
     { name: "Reports", path: "/reports", icon: FileText },

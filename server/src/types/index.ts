@@ -10,11 +10,13 @@ export type UserRole =
 
 // --- households/{id} ---
 export interface HouseholdMember {
+  member_id: string;
   name: string;
   role: string;
   age: number;
   sex: "M" | "F";
   status?: "Malnourished" | "Healthy" | "At-Risk";
+  diarrhoeaLast2Weeks?: boolean;
 }
 
 export interface VisitRecord {
@@ -22,6 +24,33 @@ export interface VisitRecord {
   agent: string;
   action: string;
   isCritical: boolean;
+}
+
+// Mirrors app/lib/types.ts's INCOME_BRACKETS — kept in sync by hand.
+// Practical round-number bands for relative income tiering, not an
+// officially sourced poverty-line threshold.
+export const INCOME_BRACKETS = [
+  "Under UGX 100,000",
+  "UGX 100,000–300,000",
+  "UGX 300,000–700,000",
+  "UGX 700,000–1,500,000",
+  "Over UGX 1,500,000",
+] as const;
+export type IncomeBracket = (typeof INCOME_BRACKETS)[number];
+
+// district_id/county_id/subcounty_id are a deterministic slug of the real
+// gazetted name (see lib/slugify.ts), not an official government P-code.
+// parish_id/village_id are just the operator's typed/selected text — no
+// comprehensive reference dataset exists for either level yet.
+export interface HouseholdLocation {
+  district_id: string;
+  county_id?: string;
+  subcounty_id?: string;
+  parish_id: string;
+  village_id: string;
+  latitude?: number;
+  longitude?: number;
+  captured_at?: string;
 }
 
 export interface Household {
@@ -33,21 +62,15 @@ export interface Household {
   members: number; // headcount, shown in the registry list
   under5Count?: number;
   householdMembers?: HouseholdMember[]; // detailed roster, shown on the profile page
-  village: string;
-  parish: string;
-  district: string;
-  subcounty?: string;
-  gps?: string;
-  lat?: number;
-  lng?: number;
+  location: HouseholdLocation;
   riskLevel: RiskLevel;
   healthStatus: string;
   waterSource: string;
   program: string;
   lastVisit?: string;
-  health?: { maternal: string; immunization: string; chronic: string };
+  health?: { maternal: string; immunization: string; chronic: string; consentCaptured?: boolean };
   wash?: { waterSource: string; distance: string; sanitation: string; handwashing: string };
-  livelihoods?: { incomeSource: string; crops: string[]; foodSecurity: string };
+  livelihoods?: { incomeSource: string; incomeBracket?: IncomeBracket; crops: string[]; foodSecurity: string };
   history?: VisitRecord[];
   createdAt: string;
   createdBy: string;

@@ -30,7 +30,10 @@ interface MapCanvasProps {
 }
 
 export default function MapCanvas({ center, zoom, households, facilities, layers }: MapCanvasProps) {
-  const geolocatedHouseholds = households.filter((h) => h.lat != null && h.lng != null);
+  // Optional chaining guards against records written before the location
+  // object existed (older Firestore documents) — they're simply excluded
+  // from the map rather than crashing the page.
+  const geolocatedHouseholds = households.filter((h) => h.location?.latitude != null && h.location?.longitude != null);
 
   return (
     <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} key={`${center[0]}-${center[1]}-${zoom}`}>
@@ -42,14 +45,14 @@ export default function MapCanvas({ center, zoom, households, facilities, layers
       {layers.households && geolocatedHouseholds.map((h) => (
         <CircleMarker
           key={h.id}
-          center={[h.lat!, h.lng!]}
+          center={[h.location.latitude!, h.location.longitude!]}
           radius={7}
           pathOptions={{ color: "white", weight: 2, fillColor: RISK_COLOR[h.riskLevel], fillOpacity: 1 }}
         >
           <Popup>
             <div className="text-sm">
               <p className="font-bold">{h.head}</p>
-              <p className="text-xs text-gray-600">{h.village}, {h.parish}</p>
+              <p className="text-xs text-gray-600">{h.location.village_id}, {h.location.parish_id}</p>
               <p className="text-xs mt-1">Risk: <span className="font-semibold">{h.riskLevel}</span></p>
             </div>
           </Popup>

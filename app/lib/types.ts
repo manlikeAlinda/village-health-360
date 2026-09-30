@@ -23,11 +23,16 @@ export interface AppUser {
 }
 
 export interface HouseholdMember {
+  member_id: string;
   name: string;
   role: string;
   age: number;
   sex: "M" | "F";
   status?: "Malnourished" | "Healthy" | "At-Risk";
+  // Standard 2-week recall period for childhood diarrhoea prevalence, the
+  // same convention DHS/MICS-style household surveys use — this is what
+  // makes the under-5 diarrhoea query real rather than household-level.
+  diarrhoeaLast2Weeks?: boolean;
 }
 
 export interface VisitRecord {
@@ -35,6 +40,37 @@ export interface VisitRecord {
   agent: string;
   action: string;
   isCritical: boolean;
+}
+
+// Practical round-number bands for relative income tiering — not an
+// officially sourced poverty-line threshold. A monthly income bracket
+// (rather than an exact figure) is easier for a household to answer
+// honestly given informal/irregular income, less sensitive to collect, and
+// still ordinal enough to rank households into a real relative tier.
+export const INCOME_BRACKETS = [
+  "Under UGX 100,000",
+  "UGX 100,000–300,000",
+  "UGX 300,000–700,000",
+  "UGX 700,000–1,500,000",
+  "Over UGX 1,500,000",
+] as const;
+export type IncomeBracket = (typeof INCOME_BRACKETS)[number];
+
+// district_id/county_id/subcounty_id are a deterministic slug of the real
+// gazetted name (see adminData.ts's slugify()), not an official government
+// P-code — this project has no verified source for real Uganda P-codes.
+// parish_id/village_id are just the operator's typed/selected text, since
+// there's no comprehensive reference dataset for either level (see
+// DATA_SOURCES.md) — most parish_id values will be free text, not a slug.
+export interface HouseholdLocation {
+  district_id: string;
+  county_id?: string;
+  subcounty_id?: string;
+  parish_id: string;
+  village_id: string;
+  latitude?: number;
+  longitude?: number;
+  captured_at?: string;
 }
 
 export interface Household {
@@ -46,21 +82,15 @@ export interface Household {
   members: number;
   under5Count?: number;
   householdMembers?: HouseholdMember[];
-  village: string;
-  parish: string;
-  district: string;
-  subcounty?: string;
-  gps?: string;
-  lat?: number;
-  lng?: number;
+  location: HouseholdLocation;
   riskLevel: RiskLevel;
   healthStatus: string;
   waterSource: string;
   program: string;
   lastVisit?: string;
-  health?: { maternal: string; immunization: string; chronic: string };
+  health?: { maternal: string; immunization: string; chronic: string; consentCaptured?: boolean };
   wash?: { waterSource: string; distance: string; sanitation: string; handwashing: string };
-  livelihoods?: { incomeSource: string; crops: string[]; foodSecurity: string };
+  livelihoods?: { incomeSource: string; incomeBracket?: IncomeBracket; crops: string[]; foodSecurity: string };
   history?: VisitRecord[];
   createdAt: string;
   createdBy: string;

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import { LayoutProvider } from "./components/providers/LayoutProvider";
 import { AuthProvider } from "./components/providers/AuthProvider";
 import AuthGate from "./components/providers/AuthGate";
 import ServiceWorkerRegister from "./components/providers/ServiceWorkerRegister";
 
-const inter = Inter({ subsets: ["latin"] });
+const figtree = Figtree({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "VillageHealth360 | Rural Intelligence",
@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-brand-bg text-gray-900`}>
+      <body className={`${figtree.className} bg-brand-bg text-gray-900`}>
         <ServiceWorkerRegister />
         <AuthProvider>
           <LayoutProvider>

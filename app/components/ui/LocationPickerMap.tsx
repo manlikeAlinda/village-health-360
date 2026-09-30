@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -20,6 +21,9 @@ interface LocationPickerMapProps {
   value: { lat: number; lng: number } | null;
   center: [number, number];
   onChange: (lat: number, lng: number) => void;
+  // Bumped whenever the parent wants the map to pan to `value` programmatically
+  // (e.g. "Use My Location"), as opposed to a click/drag the map already tracks.
+  flyToSignal?: number;
 }
 
 function ClickHandler({ onChange }: { onChange: (lat: number, lng: number) => void }) {
@@ -31,12 +35,23 @@ function ClickHandler({ onChange }: { onChange: (lat: number, lng: number) => vo
   return null;
 }
 
-export default function LocationPickerMap({ value, center, onChange }: LocationPickerMapProps) {
+function FlyToOnSignal({ value, signal }: { value: { lat: number; lng: number } | null; signal?: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (value && signal) {
+      map.setView([value.lat, value.lng], 15);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signal]);
+  return null;
+}
+
+export default function LocationPickerMap({ value, center, onChange, flyToSignal }: LocationPickerMapProps) {
   return (
     <MapContainer
       center={value ? [value.lat, value.lng] : center}
       zoom={value ? 15 : 12}
-      style={{ height: "220px", width: "100%", borderRadius: "0.5rem" }}
+      style={{ height: "220px", width: "100%" }}
       key={`${center[0]}-${center[1]}`}
     >
       <TileLayer
@@ -44,6 +59,7 @@ export default function LocationPickerMap({ value, center, onChange }: LocationP
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <ClickHandler onChange={onChange} />
+      <FlyToOnSignal value={value} signal={flyToSignal} />
       {value && (
         <Marker
           position={[value.lat, value.lng]}

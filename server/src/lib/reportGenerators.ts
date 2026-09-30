@@ -58,7 +58,7 @@ export function generateHealthStatusReport(doc: PDFKit.PDFDocument, households: 
   }
   households.forEach((h) => {
     const riskColor = h.riskLevel === "Critical" ? "#DC2626" : h.riskLevel === "High" ? "#F97316" : "#111827";
-    drawTableRow(doc, [h.head, h.village, h.parish, h.riskLevel, h.healthStatus], widths, { color: riskColor });
+    drawTableRow(doc, [h.head, h.location?.village_id ?? "—", h.location?.parish_id ?? "—", h.riskLevel, h.healthStatus], widths, { color: riskColor });
   });
 }
 
@@ -103,7 +103,7 @@ export function generateVulnerabilityIndexReport(doc: PDFKit.PDFDocument, househ
     doc.fontSize(10).fillColor("#9CA3AF").text("No Critical or High risk households in this scope.");
   }
   households.forEach((h) => {
-    drawTableRow(doc, [h.head, h.village, h.parish, h.riskLevel, h.healthStatus], widths, {
+    drawTableRow(doc, [h.head, h.location?.village_id ?? "—", h.location?.parish_id ?? "—", h.riskLevel, h.healthStatus], widths, {
       color: h.riskLevel === "Critical" ? "#DC2626" : "#F97316",
     });
   });

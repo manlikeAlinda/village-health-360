@@ -1,0 +1,6046 @@
+{
+  "meta": {
+    "seed": 42,
+    "generator": "mulberry32",
+    "record_count": 100
+  },
+  "sources": "See header comments in generate_households.ts for full citations (NPHC 2024, UDHS 2022, this project's real admin-hierarchy data).",
+  "assumptions": {
+    "settlement_type": "Derived heuristically from subcounty-name pattern (Division/Town Council names skew peri-urban/trading centre; plain rural subcounty names skew rural), not a cited urban/rural classification table.",
+    "head_age_shape": "Sampled via a Gaussian centred at 40 (sd 11), clipped to [18,90], to approximate the requested 25-55 skew — no cited household-head age distribution used.",
+    "head_marital_status": "Assumed split, differentiated by head sex (male heads skew married; female heads skew widowed/divorced, reflecting well-established but not-cited-here headship patterns): not sourced from a specific UDHS/Census table in this pass.",
+    "head_education_level": "Assumed distribution (None/Some Primary/Completed Primary/Some Secondary/Completed Secondary/Tertiary), weighted more educated in urban/peri-urban settlement types. Not sourced from a specific table this pass.",
+    "head_occupation": "Assumed distribution weighted by settlement_type (subsistence farming dominant in rural; trading/formal employment more common in urban/peri-urban). Not sourced this pass.",
+    "household_size_shape": "Sampled from a discretised distribution around the SOURCED mean of 4.4 (NPHC 2024), shape itself (variance/skew) is assumed, not a cited household-size distribution table.",
+    "members_ages": "Child ages sampled with a skew toward younger ages, loosely motivated by Uganda's real youthful population structure (50.5% under 17, NPHC 2024 press figures) but the specific age-sampling shape is assumed, not a cited single-year age table.",
+    "pregnancy_rate": "Each eligible woman (age 15-49) assumed an independent ~9% chance of being currently pregnant — a plausible point-in-time figure, not drawn from a cited fertility/pregnancy prevalence table.",
+    "dwelling_roof_type": "Assumed distribution (iron sheet roofing dominant nationally is well-established general knowledge but no specific census table cited this pass); correlated with settlement_type/income tier.",
+    "water_source": "Assumed split of borehole/protected spring/tap/open source, correlated with settlement_type (rural: more borehole+open source; urban: more tap) — direction is realistic, exact proportions not cited this pass.",
+    "sanitation_facility": "Categories follow the real WHO/UNICEF JMP Improved/Unimproved sanitation ladder (a genuine international standard, already used elsewhere in this project), but the proportion assigned to each category here is assumed, not a cited JMP country estimate.",
+    "cooking_fuel": "Assumed split (firewood dominant rural, charcoal/LPG more common urban) — direction realistic, proportions not cited.",
+    "electricity_access": "Assumed probability by settlement_type (rural low, urban higher) — direction realistic (Uganda's rural electrification rate is known to be low), exact rate not cited this pass.",
+    "income_distribution": "Lognormal per district/settlement_type; mu/sigma parameters chosen to produce a plausible right-skewed UGX income spread (higher central tendency in Kampala/Wakiso than Gulu), not fitted to a cited income/consumption survey (e.g. UNHS).",
+    "facility_level_and_distance": "nearest_facility_level and distance_km assumed distributions by settlement_type (rural: more likely only HC II/III nearby, longer distance; urban: more Hospital/HC IV access, shorter distance) — direction realistic, exact shape assumed.",
+    "llin_ownership": "Modelled as approximately household_size/2 nets (reflecting Uganda's real 'one net per two people' universal-coverage policy target, a genuine real policy benchmark) with random variation — not a cited household LLIN ownership survey rate.",
+    "malaria_episode": "Base rate assumed, increased for rural/poor-water/poor-sanitation households and lower LLIN ownership — direction consistent with the well-established real WASH-malaria relationship, exact rate not cited this pass.",
+    "anc_visits": "For households with any woman aged 15-49, a retrospective 'last pregnancy' ANC visit count (0-8) is assumed, decreasing with distance_km and lower head_education_level per the required correlation rule — base distribution not from a cited ANC4+ coverage table (though the real UDHS 2022 ANC4+ national estimate exists, it was not verified/cited in this pass).",
+    "immunisation_up_to_date": "Base rate 63% (SOURCED: UDHS 2022 basic vaccination coverage, 12-23 months), adjusted downward for higher distance_km and lower head_education_level per the required correlation rule — the adjustment magnitudes themselves are assumed.",
+    "chronic_conditions": "Hypertension/diabetes probability increases with head_age (realistic direction, not a cited NCD prevalence table); HIV-on-ART assigned at a low flat background rate as a placeholder, not the real cited UPHIA/UDHS HIV prevalence estimate.",
+    "reported_diarrhoea_last_2w": "Household-level flag = true if any under-5 member had diarrhoea in the last 2 weeks (the real DHS standard recall convention), with probability increased by poor water/sanitation classification — exact base rate assumed, not the cited UDHS under-5 diarrhoea prevalence figure.",
+    "parish_and_village_names": "Real for Kira Division/Wakiso and Awach/Gulu only (see SOURCES). Every other parish name and all village names in this dataset are synthetic-but-plausible constructions, not real gazetted place names — no nationwide parish/village dataset exists (consistent with this project's own DATA_SOURCES.md finding).",
+    "phone_numbers_and_nins": "Not generated — the requested schema does not include a phone or NIN field, so none were fabricated, avoiding the need for a reserved/invalid number range."
+  },
+  "households": [
+    {
+      "household_id": "c200fc28-ecd5-439e-bd11-4fde549c2916",
+      "village_health_team_id": "VHT-WAK-001",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kajjansi Town Council",
+      "parish": "Buwaya B",
+      "village": "Ntinda B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 38,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Tiles",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 340000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.7,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "3e9bf865-7abf-4730-bf08-b5aecb63ed1c",
+      "village_health_team_id": "VHT-KAM-001",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Bulanga A",
+      "village": "Lugazi II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 60,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 60,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 340000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.4,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "6311e733-acb7-4765-931f-e4b00d108fea",
+      "village_health_team_id": "VHT-MBA-001",
+      "district": "Mbale City",
+      "region": "Eastern",
+      "subcounty": "Northern Division",
+      "parish": "Kiwenda I",
+      "village": "Bugonga B",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 47,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 47,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 317000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 4.1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "273f965c-b851-4ff3-af19-5d71e686295b",
+      "village_health_team_id": "VHT-WAK-001",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division B",
+      "parish": "Namulanda",
+      "village": "Kyabaggu",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 45,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 45,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 44,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 295000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.8,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "HIV on ART"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "17d98381-d244-4dfa-baff-e12dfd9a7300",
+      "village_health_team_id": "VHT-WAK-001",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Kibibi II",
+      "village": "Kisimbiri A",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 35,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 35,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 63,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 13,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 124000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 11.6,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "96fe3326-cee8-4b50-aba0-16abbfc7fac1",
+      "village_health_team_id": "VHT-KAM-001",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kyanja",
+      "village": "Lugazi",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 45,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Casual labour",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 45,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 46,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 11,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 600000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC III",
+      "distance_km": 3.2,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "9c670ab2-7f02-4280-a213-d9e1275dbfad",
+      "village_health_team_id": "VHT-WAK-001",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kasanje",
+      "parish": "Nakawuka II",
+      "village": "Kigumba",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 61,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 61,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 63,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 9,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 190000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 9.2,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "88aedbb6-22a8-49fa-a111-fab230d1721f",
+      "village_health_team_id": "VHT-WAK-001",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kakiri",
+      "parish": "Kiwenda I",
+      "village": "Lwanika II",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 51,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "None",
+      "head_occupation": "Subsistence farming",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 51,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 45,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 1335000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 7,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "2ffe3253-f125-4f41-b383-215675df709c",
+      "village_health_team_id": "VHT-KAM-002",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Buwaya I",
+      "village": "Kikandwa A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 39,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 39,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 40,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 405000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 0.9,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "hypertension",
+        "diabetes"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "afd9b866-33f5-4918-a80f-694d395aac48",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kajjansi Town Council",
+      "parish": "Lwera A",
+      "village": "Buloba II",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 44,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 44,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 44,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 227000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC III",
+      "distance_km": 0.5,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "3cc453f7-9c7f-4f32-b056-e89edfcb76a3",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Nabweru Division",
+      "parish": "Lwera B",
+      "village": "Nakabugo II",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 27,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 27,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 29,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 783000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.3,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "98854a3f-f7f2-4155-8043-b720b1a691f6",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masuliita",
+      "parish": "Kibibi II",
+      "village": "Kikandwa I",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 31,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 31,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 28,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 101000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 10.2,
+      "llin_nets_owned": 5,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "c4d42d4b-01fe-4670-9f56-b38045682fee",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kajjansi Town Council",
+      "parish": "Kiwenda A",
+      "village": "Kanyanya I",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 38,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 38,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 11,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 13,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Grass-thatched",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 278000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.4,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "70ddb84b-b27e-4f72-bb34-85c9ee8250e7",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Gombe Division",
+      "parish": "Kalagi A",
+      "village": "Kikandwa",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 36,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 36,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 33,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 1111000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.5,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "0d106efe-2453-445a-bea4-8c541bf06229",
+      "village_health_team_id": "VHT-KAM-002",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Kigo II",
+      "village": "Lwanika",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 22,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 22,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 52,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Concrete",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 507000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.4,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "6adef5c4-315b-43c0-83ab-ab9dda96fcae",
+      "village_health_team_id": "VHT-WAK-002",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kakiri",
+      "parish": "Kigo B",
+      "village": "Nakabugo",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 41,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Casual labour",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 45,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 376000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.8,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "6d75cdda-fe30-4786-b0ab-2dbee3ffbf2f",
+      "village_health_team_id": "VHT-WAK-003",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Katabi Town Council",
+      "parish": "Buwaya A",
+      "village": "Lugazi B",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 56,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 8,
+      "members": [
+        {
+          "age": 56,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 82,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 9,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 4,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 361000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.5,
+      "llin_nets_owned": 5,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "9f07947b-4374-4104-bd4b-d3b9edc7122e",
+      "village_health_team_id": "VHT-MBA-003",
+      "district": "Mbale City",
+      "region": "Eastern",
+      "subcounty": "Wanale Division",
+      "parish": "Kiwenda",
+      "village": "Lugazi A",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 18,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Trading/small business",
+      "household_size": 8,
+      "members": [
+        {
+          "age": 18,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Grandchild"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 36,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 6,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Tiles",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 524000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 1.5,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "b57ea002-f3f0-44df-bf83-1a3f77120413",
+      "village_health_team_id": "VHT-KAM-003",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Kyabakadde A",
+      "village": "Kisimbiri A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 41,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 35,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 9,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Tiles",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 475000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.6,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "91e71a5d-aace-4360-98f6-8e2157a03566",
+      "village_health_team_id": "VHT-WAK-003",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Gombe Division",
+      "parish": "Kigo I",
+      "village": "Lwanika A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 39,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 39,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 43,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 20,
+          "sex": "M",
+          "relationship_to_head": "Sibling"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 522000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 1.7,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "b6fbefdd-57b7-469a-a1c5-6c63081152d6",
+      "village_health_team_id": "VHT-WAK-003",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division A",
+      "parish": "Kibibi II",
+      "village": "Buloba",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 40,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 40,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Concrete",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 125000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.1,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "00fbe295-76a5-4ee0-9f19-5e2011854e05",
+      "village_health_team_id": "VHT-KAM-003",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Kigo II",
+      "village": "Kisimbiri",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 31,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Unemployed",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 31,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 25,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 17,
+          "sex": "F",
+          "relationship_to_head": "Grandchild"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 188000,
+      "primary_income_source": "Unemployed",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.4,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "afc9af0a-bb68-48ba-8b6a-c5b85bb3d188",
+      "village_health_team_id": "VHT-WAK-003",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Gombe Division",
+      "parish": "Kyabakadde II",
+      "village": "Lwanika II",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 27,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 27,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 24,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Tiles",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 254000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.5,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "9d0a875d-449d-4607-960d-38d9f406d07a",
+      "village_health_team_id": "VHT-WAK-003",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masuliita",
+      "parish": "Kigo A",
+      "village": "Kisimbiri B",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 47,
+      "head_marital_status": "Never Married",
+      "head_education_level": "None",
+      "head_occupation": "Subsistence farming",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 47,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Grass-thatched",
+      "water_source": "Borehole",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 323000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 7.3,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "712b1266-61e8-4e5d-a643-56a70c33c1b1",
+      "village_health_team_id": "VHT-MBA-004",
+      "district": "Mbarara City",
+      "region": "Western",
+      "subcounty": "Nyakayojo Division",
+      "parish": "Lwera I",
+      "village": "Lugazi",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 30,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Formal employment",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 30,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 29,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 315000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.7,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "4fc4070f-e61f-4f08-8daa-490417cb1fc1",
+      "village_health_team_id": "VHT-KAM-004",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kigo I",
+      "village": "Kigumba I",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 44,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 44,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 46,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 1378000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.1,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "42143b40-be03-4213-9cd1-ebb50b4d929d",
+      "village_health_team_id": "VHT-KAM-004",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Makindye Division",
+      "parish": "Kiwenda II",
+      "village": "Ntinda B",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 57,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 57,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 12,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 350000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.3,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "e7b5a066-83b9-4cb9-9e33-a2caa94dc0e8",
+      "village_health_team_id": "VHT-KAM-004",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Makindye Division",
+      "parish": "Buwaya",
+      "village": "Kikandwa",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 40,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 40,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 66,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 190000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 1.7,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "330fe812-e456-44a0-9472-d21f38b98b04",
+      "village_health_team_id": "VHT-WAK-004",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division A",
+      "parish": "Kyanja B",
+      "village": "Buloba",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 27,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 27,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 26,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 327000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "bfec64b9-b7da-45cc-8882-f30ef6d7a166",
+      "village_health_team_id": "VHT-WAK-004",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bussi",
+      "parish": "Kyanja B",
+      "village": "Lwanika II",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 32,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 108000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 9.4,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "f4fda7a7-b528-4833-85e9-41cce243d9f7",
+      "village_health_team_id": "VHT-WAK-004",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Wakiso Town Council",
+      "parish": "Kiwenda II",
+      "village": "Buloba II",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 30,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 30,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 29,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 12,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Grass-thatched",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 598000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.8,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "ee2cf77b-8375-4afe-b914-2a4f15a82af8",
+      "village_health_team_id": "VHT-WAK-004",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division A",
+      "parish": "Kalagi A",
+      "village": "Lugazi II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 43,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 43,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 176000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 5.9,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "58b4d2a0-34c6-4434-9041-a88c2d6e19f5",
+      "village_health_team_id": "VHT-WAK-005",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Nabweru Division",
+      "parish": "Kasenge B",
+      "village": "Ntinda A",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 59,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 59,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 9,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 291000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.4,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "451c2466-6262-4c88-8aae-6945fcef4979",
+      "village_health_team_id": "VHT-WAK-005",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Wakiso",
+      "parish": "Kasenge B",
+      "village": "Lugazi II",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 46,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 46,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 45,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 64,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 283000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 3.7,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "49393a44-dc5a-4695-b713-f33ca0c3708c",
+      "village_health_team_id": "VHT-MBA-005",
+      "district": "Mbarara City",
+      "region": "Western",
+      "subcounty": "Kakoba Division",
+      "parish": "Kyanja I",
+      "village": "Kisimbiri A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 54,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 54,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 54,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Grass-thatched",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 316000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.9,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "hypertension"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "116a292d-6f48-40ca-ac80-897242fa3cf0",
+      "village_health_team_id": "VHT-GUL-005",
+      "district": "Gulu",
+      "region": "Northern",
+      "subcounty": "Palaro",
+      "parish": "Kyanja I",
+      "village": "Kasokero II",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 46,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 46,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 225000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 17.5,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "03cbe848-6433-4185-87e4-9651b73cb0fb",
+      "village_health_team_id": "VHT-KAM-005",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Kyanja B",
+      "village": "Kisimbiri II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 61,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 61,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 84,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 519000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 3.8,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "05188f7a-b062-4746-b0d9-0760fa9d72bd",
+      "village_health_team_id": "VHT-KAM-005",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Namulanda A",
+      "village": "Kyaliwajjala I",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 42,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 42,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 40,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 16,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 586000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.2,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "063e2d56-39b5-4f23-80ac-29077be37c76",
+      "village_health_team_id": "VHT-MBA-005",
+      "district": "Mbarara City",
+      "region": "Western",
+      "subcounty": "Kakiika Division",
+      "parish": "Bulanga B",
+      "village": "Buloba II",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 55,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "None",
+      "head_occupation": "Trading/small business",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 55,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 52,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 9,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 41,
+          "sex": "F",
+          "relationship_to_head": "Sibling"
+        },
+        {
+          "age": 9,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Grass-thatched",
+      "water_source": "Tap",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 453000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.3,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "51cf59d0-db05-4912-9af4-6365bf9d0fb1",
+      "village_health_team_id": "VHT-WAK-005",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division A",
+      "parish": "Kyabakadde B",
+      "village": "Ntinda",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 850000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 4.1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "9d7f7f54-1c36-4be2-ace6-a1909ffc0884",
+      "village_health_team_id": "VHT-KAM-006",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Namulanda II",
+      "village": "Kisimbiri II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 27,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 27,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 12,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 12,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 322000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.2,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "d4bf891c-cdfa-41e2-92c7-bb00c9682cac",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Lwera",
+      "village": "Kikandwa B",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 49,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 49,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 11,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 137000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.3,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "fe2f0e4a-658b-4685-b692-17044617d9d4",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kajjansi Town Council",
+      "parish": "Kiwenda I",
+      "village": "Kyabaggu II",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 54,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 54,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 55,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 74,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Electricity",
+      "electricity_access": false,
+      "monthly_income_ugx": 803000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 5.4,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "b7598a43-aef5-41c1-b7df-2acfba995bea",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kyengera Town Council",
+      "parish": "Kyanja A",
+      "village": "Kikandwa",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 26,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Casual labour",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 26,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 22,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 479000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.8,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "479ea53b-69d8-48de-a1eb-d4da345b64bf",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kajjansi Town Council",
+      "parish": "Kalagi A",
+      "village": "Bugonga II",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 41,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 41,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 15,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 9,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 281000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1.7,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "diabetes"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "b9741f9c-0d09-4e12-ba6e-c1e6d6e2e310",
+      "village_health_team_id": "VHT-KAM-006",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kigo",
+      "village": "Nabusanke II",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 52,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 52,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 54,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 71,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 755000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "87e40b52-8dd7-4d80-8d92-660e7dc71680",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Nabweru Division",
+      "parish": "Kyabakadde B",
+      "village": "Ntinda A",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 38,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 38,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 695000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.1,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "f766b56b-8764-4790-9d5d-67b42ca29d05",
+      "village_health_team_id": "VHT-WAK-006",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bweyogerere Division",
+      "parish": "Kiwenda A",
+      "village": "Kanyanya A",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 49,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 49,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 75,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 347000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.6,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "90db0d2e-a82a-4926-b100-8eb2146fa63b",
+      "village_health_team_id": "VHT-KAM-007",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Namulanda II",
+      "village": "Buloba I",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 42,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Unemployed",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 42,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 46,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 785000,
+      "primary_income_source": "Unemployed",
+      "nearest_facility_level": "HC III",
+      "distance_km": 3.5,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "36d86d84-fe61-492c-ab72-18db57db0e3c",
+      "village_health_team_id": "VHT-WAK-007",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bussi",
+      "parish": "Kibibi I",
+      "village": "Kyaliwajjala A",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 41,
+      "head_marital_status": "Never Married",
+      "head_education_level": "None",
+      "head_occupation": "Subsistence farming",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 277000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "6aab57d5-35bb-437f-97d6-fb0a1e286b1b",
+      "village_health_team_id": "VHT-WAK-007",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Nsangi A",
+      "village": "Kanyanya B",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 37,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 37,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 5,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 126000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 4.6,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "d8f24393-48ee-43da-aebc-5c5db2e7665f",
+      "village_health_team_id": "VHT-WAK-007",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kakiri Town Council",
+      "parish": "Kasenge B",
+      "village": "Kasokero A",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 35,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 218000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "299f6366-7294-4ec9-a119-80a89d225e9b",
+      "village_health_team_id": "VHT-KAM-007",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Makindye Division",
+      "parish": "Kyabakadde B",
+      "village": "Lwanika I",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 36,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 36,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 30,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Electricity",
+      "electricity_access": true,
+      "monthly_income_ugx": 824000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 3.6,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "d3173b23-6912-4cf0-b12e-573b1aeb4b35",
+      "village_health_team_id": "VHT-WAK-007",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kasanje",
+      "parish": "Namulanda II",
+      "village": "Kisimbiri",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 46,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 46,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Tiles",
+      "water_source": "Open source",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 323000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 4.4,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "0a2ffc3d-4e3a-401b-87e8-496c4b8437c0",
+      "village_health_team_id": "VHT-WAK-007",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masulita Town Council",
+      "parish": "Kalagi B",
+      "village": "Kigumba B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 43,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 43,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 58,
+          "sex": "F",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 345000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.4,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "131ea45f-c5f7-4cbd-8d39-76509bcdcd0a",
+      "village_health_team_id": "VHT-KAM-007",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Nsangi I",
+      "village": "Bugonga I",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 51,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 51,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 53,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 8,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 134000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC II",
+      "distance_km": 0.9,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "d383e9fa-6e50-4561-a7b6-019ecaa2bab8",
+      "village_health_team_id": "VHT-WAK-008",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Nabweru Division",
+      "parish": "Kasenge B",
+      "village": "Nakabugo B",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 50,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 50,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 47,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Traditional (mud & wattle)",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 293000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.8,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "ea7a4fb2-8601-4f71-8e3f-f2306c23c4da",
+      "village_health_team_id": "VHT-WAK-008",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masulita Town Council",
+      "parish": "Kiwenda A",
+      "village": "Kasokero B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 33,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 33,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 30,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 342000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 1.2,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "5f075879-11f8-452b-9b2c-e66983dfdc18",
+      "village_health_team_id": "VHT-KAM-008",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Central Division",
+      "parish": "Kalagi I",
+      "village": "Lwanika",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 48,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 48,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 12,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 1014000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 0.7,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "127c22f8-8cea-4539-9c88-cbd2f0898afc",
+      "village_health_team_id": "VHT-WAK-008",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Namayumba",
+      "parish": "Nsangi II",
+      "village": "Kanyanya A",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 32,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 13,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 202000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC III",
+      "distance_km": 3.6,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "c596836c-e832-491a-bb90-71d05a8d0373",
+      "village_health_team_id": "VHT-KAM-008",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Kigo B",
+      "village": "Kigumba B",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 29,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 29,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 548000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1.2,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "HIV on ART"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "70bb334d-e894-4e83-a9ad-4bd25dd45463",
+      "village_health_team_id": "VHT-WAK-008",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masulita Town Council",
+      "parish": "Kibibi II",
+      "village": "Lugazi B",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 27,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Formal employment",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 27,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 414000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1.8,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "a623c34e-81bf-4937-a562-83c9aec700e2",
+      "village_health_team_id": "VHT-KAM-008",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Nakawuka I",
+      "village": "Kisimbiri A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 42,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 42,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 11,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Tiles",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 499000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1.4,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "c10365f9-20e8-48fc-b30f-2614d0baecc3",
+      "village_health_team_id": "VHT-KAM-008",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Lwera A",
+      "village": "Nabusanke I",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 51,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 51,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Tiles",
+      "water_source": "Open source",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 759000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.5,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "2ff3b178-891f-4cb4-96f1-0c4dd4bb995b",
+      "village_health_team_id": "VHT-KAM-009",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Kasenge A",
+      "village": "Kikandwa I",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 35,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Artisan/craft",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 35,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Concrete",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 688000,
+      "primary_income_source": "Artisan/craft",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.5,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "22881082-f0a8-40e5-b0fc-63f5e7e3922e",
+      "village_health_team_id": "VHT-KAM-009",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Kyanja B",
+      "village": "Kyabaggu B",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 30,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 30,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 963000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.3,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "0acaa0c4-3df7-4707-a5ac-b047133461e4",
+      "village_health_team_id": "VHT-WAK-009",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masuliita",
+      "parish": "Kasenge A",
+      "village": "Nakabugo B",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 18,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 6,
+      "members": [
+        {
+          "age": 18,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 16,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 4,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 227000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 3,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "a547351f-9357-4dcb-943b-af017f48e03c",
+      "village_health_team_id": "VHT-MBA-009",
+      "district": "Mbale City",
+      "region": "Eastern",
+      "subcounty": "Northern Division",
+      "parish": "Bulanga",
+      "village": "Ntinda I",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 24,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 24,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 21,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 225000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 5.7,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "3f77c809-bcf1-48d6-8f7c-a9c63d1b502e",
+      "village_health_team_id": "VHT-MBA-009",
+      "district": "Mbarara City",
+      "region": "Western",
+      "subcounty": "Biharwe Division",
+      "parish": "Lwera II",
+      "village": "Buloba A",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 46,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 46,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 66,
+          "sex": "M",
+          "relationship_to_head": "Parent"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 1,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 1164000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 2.6,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "81d1e847-fb06-43b5-b09a-a320097a4d2d",
+      "village_health_team_id": "VHT-WAK-009",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kakiri",
+      "parish": "Nakawuka",
+      "village": "Kikandwa II",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 47,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 47,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 173000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 4.5,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "2ede973a-cd56-4d4e-b9c5-4946954ec1ec",
+      "village_health_team_id": "VHT-KAM-009",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Makindye Division",
+      "parish": "Kiwenda",
+      "village": "Lugazi A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 38,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 38,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 41,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 375000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 5.3,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "808c500f-061c-4c7f-a6fd-3fe84847e1ee",
+      "village_health_team_id": "VHT-KAM-009",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kiwenda II",
+      "village": "Nakabugo I",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 40,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 40,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 10,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 15,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 453000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "b46b047d-aae0-4ac0-b003-50b76c3e8059",
+      "village_health_team_id": "VHT-MBA-010",
+      "district": "Mbarara City",
+      "region": "Western",
+      "subcounty": "Kamukuzi Division",
+      "parish": "Kiwenda A",
+      "village": "Kyabaggu A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 37,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 37,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 32,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 11,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 420000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.5,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "fe5d31d3-367d-48a4-8987-409df0276a8a",
+      "village_health_team_id": "VHT-KAM-010",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kiwenda",
+      "village": "Kisimbiri I",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 36,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 36,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 21,
+          "sex": "M",
+          "relationship_to_head": "Sibling"
+        },
+        {
+          "age": 11,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 529000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.8,
+      "llin_nets_owned": 5,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "566208f1-9368-4edf-a0c9-5bda2c1f4902",
+      "village_health_team_id": "VHT-KAM-010",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kalagi B",
+      "village": "Kyaliwajjala A",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 41,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "None",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 43,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 667000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.3,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "3abd1212-d42e-4056-8fcb-31b5ce086963",
+      "village_health_team_id": "VHT-GUL-010",
+      "district": "Gulu",
+      "region": "Northern",
+      "subcounty": "Patiko",
+      "parish": "Kalagi I",
+      "village": "Kyaliwajjala II",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 30,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Formal employment",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 30,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 79000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 3.2,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "3465f613-60a3-4e2b-955f-58fa9872d844",
+      "village_health_team_id": "VHT-KAM-010",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Rubaga Division",
+      "parish": "Nakawuka II",
+      "village": "Ntinda II",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 32,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 32,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 33,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 22,
+          "sex": "M",
+          "relationship_to_head": "Sibling"
+        },
+        {
+          "age": 17,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Grass-thatched",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 1026000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.1,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "4ef22435-2e55-4a40-a5a7-8c8f1f16ab33",
+      "village_health_team_id": "VHT-WAK-010",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Division A",
+      "parish": "Kibibi",
+      "village": "Nakabugo B",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 58,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 58,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 12,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Tiles",
+      "water_source": "Borehole",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 601000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "e57d410d-ace7-4d02-9676-f31cd80ac702",
+      "village_health_team_id": "VHT-WAK-010",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Masajja Division",
+      "parish": "Kyabakadde",
+      "village": "Lwanika B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 28,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 28,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 25,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Protected spring",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 255000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 5,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "372404e9-721e-49be-a4ab-e200f299eead",
+      "village_health_team_id": "VHT-KAM-010",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Central Division",
+      "parish": "Nsangi",
+      "village": "Lwanika II",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 49,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "None",
+      "head_occupation": "Formal employment",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 49,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 191000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.1,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "e718e440-01cf-4e64-b914-4727824295e9",
+      "village_health_team_id": "VHT-KAM-011",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Kibibi I",
+      "village": "Lwanika II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 45,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 45,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 8,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 184000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC II",
+      "distance_km": 0.8,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 1,
+      "chronic_conditions": [
+        "hypertension"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "89d25cad-5841-42a9-b450-438f6b197385",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Busukuma Division",
+      "parish": "Nsangi I",
+      "village": "Kisimbiri II",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 35,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 35,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 34,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Tiles",
+      "water_source": "Borehole",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 130000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 3.2,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "eeae094b-732f-48b4-a941-8ae00c1c8506",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Namayumba",
+      "parish": "Kyanja II",
+      "village": "Kigumba I",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 37,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 37,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 210000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 10.2,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "22b4f730-14fb-4e39-8950-fc0c3145298e",
+      "village_health_team_id": "VHT-MBA-011",
+      "district": "Mbale City",
+      "region": "Eastern",
+      "subcounty": "Wanale Division",
+      "parish": "Nakawuka A",
+      "village": "Nakabugo A",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 48,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Unemployed",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 48,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 13,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 28,
+          "sex": "M",
+          "relationship_to_head": "Sibling"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 336000,
+      "primary_income_source": "Unemployed",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.4,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "909f8c60-f2fe-4968-baa4-198da7a1bb22",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bussi",
+      "parish": "Kasenge II",
+      "village": "Kisimbiri B",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 51,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 51,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 14,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 168000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 4.1,
+      "llin_nets_owned": 3,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "7ff12e99-2dd7-45e1-b632-5a7d8b2b7ce8",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bweyogerere Division",
+      "parish": "Nakawuka II",
+      "village": "Kyaliwajjala B",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 48,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 8,
+      "members": [
+        {
+          "age": 48,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 10,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 5,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": true,
+      "monthly_income_ugx": 118000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 0.8,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "1b8f4890-cedd-4997-9a43-b2a14468cdb5",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Kasenge",
+      "village": "Kikandwa A",
+      "settlement_type": "rural",
+      "head_sex": "F",
+      "head_age": 27,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 27,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 395000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC II",
+      "distance_km": 2.2,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "1723a412-ea1b-4539-95e7-860e15a93cbe",
+      "village_health_team_id": "VHT-WAK-011",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bunamwaya Division",
+      "parish": "Bulanga II",
+      "village": "Kisimbiri",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 24,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 4,
+      "members": [
+        {
+          "age": 24,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 18,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 205000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 3.5,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "4cb7e79b-f0c6-4b73-979a-4552b48210e9",
+      "village_health_team_id": "VHT-WAK-012",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bunamwaya Division",
+      "parish": "Kibibi II",
+      "village": "Kisimbiri B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 43,
+      "head_marital_status": "Widowed",
+      "head_education_level": "None",
+      "head_occupation": "Casual labour",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 43,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 405000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 1.7,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "4eef3342-5ab1-4678-b8fe-bff298cef939",
+      "village_health_team_id": "VHT-WAK-012",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Lwera A",
+      "village": "Bugonga",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 39,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Trading/small business",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 39,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 12,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 1,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Concrete",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 167000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.3,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "108f2173-e35e-4270-aa1a-8391e553907b",
+      "village_health_team_id": "VHT-MBA-012",
+      "district": "Mbale City",
+      "region": "Eastern",
+      "subcounty": "Wanale Division",
+      "parish": "Kyabakadde B",
+      "village": "Ntinda II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 44,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Trading/small business",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 44,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 17,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 2,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 1005000,
+      "primary_income_source": "Trading/small business",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 2.1,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": 3,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "4687b5f2-00bc-4ceb-816b-8411e5e0169a",
+      "village_health_team_id": "VHT-WAK-012",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Nansana Division",
+      "parish": "Kiwenda II",
+      "village": "Kanyanya II",
+      "settlement_type": "trading centre",
+      "head_sex": "F",
+      "head_age": 35,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Formal employment",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 35,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 29,
+          "sex": "M",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 305000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.4,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "f794c3b3-63ab-40c4-9656-f904f325f073",
+      "village_health_team_id": "VHT-KAM-012",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Nakawa Division",
+      "parish": "Nakawuka",
+      "village": "Nakabugo",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 34,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Some Secondary",
+      "head_occupation": "Formal employment",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 34,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 34,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 1,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Traditional pit latrine",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 573000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC IV",
+      "distance_km": 1.1,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 2,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "98b3cde6-dbec-4bf8-9c2e-bf478eaba631",
+      "village_health_team_id": "VHT-KAM-012",
+      "district": "Kampala City",
+      "region": "Central",
+      "subcounty": "Kawempe Division",
+      "parish": "Lwera",
+      "village": "Kyaliwajjala II",
+      "settlement_type": "peri-urban",
+      "head_sex": "F",
+      "head_age": 62,
+      "head_marital_status": "Widowed",
+      "head_education_level": "Some Primary",
+      "head_occupation": "Formal employment",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 62,
+          "sex": "F",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 0,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 6,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 0,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 2,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 5,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Tiles",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 683000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.3,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "482316ae-b191-4ed3-8f68-558ea2e2c934",
+      "village_health_team_id": "VHT-WAK-012",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Ndejje Division",
+      "parish": "Nsangi A",
+      "village": "Kyabaggu",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 39,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Tertiary",
+      "head_occupation": "Formal employment",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 39,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 3,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 3,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 4,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Iron-roofed simple",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "No facility / open defecation",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 452000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "HC III",
+      "distance_km": 1.4,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": true,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "82524044-37e5-4f56-927e-97c2a42ffc84",
+      "village_health_team_id": "VHT-WAK-012",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Bussi",
+      "parish": "Kyanja II",
+      "village": "Ntinda II",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 50,
+      "head_marital_status": "Never Married",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 7,
+      "members": [
+        {
+          "age": 50,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 7,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 7,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 1,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 4,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Open pit latrine (no slab)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": false,
+      "monthly_income_ugx": 225000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.8,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": false,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    },
+    {
+      "household_id": "96f36ff9-7026-41ca-add9-f2c800ffc40d",
+      "village_health_team_id": "VHT-WAK-013",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Kasangati Town Council",
+      "parish": "Kasenge I",
+      "village": "Kasokero B",
+      "settlement_type": "trading centre",
+      "head_sex": "M",
+      "head_age": 29,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "None",
+      "head_occupation": "Formal employment",
+      "household_size": 1,
+      "members": [
+        {
+          "age": 29,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Ventilated Improved Pit (VIP) latrine",
+      "cooking_fuel": "LPG/Gas",
+      "electricity_access": false,
+      "monthly_income_ugx": 256000,
+      "primary_income_source": "Formal employment",
+      "nearest_facility_level": "Hospital",
+      "distance_km": 2.4,
+      "llin_nets_owned": 1,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "7a8d3997-1aed-43f6-a91b-72aa440270d3",
+      "village_health_team_id": "VHT-WAK-013",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Namayumba",
+      "parish": "Buwaya II",
+      "village": "Ntinda I",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 21,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 2,
+      "members": [
+        {
+          "age": 21,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 19,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Borehole",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Firewood",
+      "electricity_access": true,
+      "monthly_income_ugx": 73000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.7,
+      "llin_nets_owned": 0,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 4,
+      "chronic_conditions": [
+        "diabetes"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "77f214e7-0580-4980-8381-9c85fd5d18e7",
+      "village_health_team_id": "VHT-WAK-013",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Mende",
+      "parish": "Lwera A",
+      "village": "Kyaliwajjala",
+      "settlement_type": "rural",
+      "head_sex": "M",
+      "head_age": 50,
+      "head_marital_status": "Married/Cohabiting",
+      "head_education_level": "Completed Secondary",
+      "head_occupation": "Subsistence farming",
+      "household_size": 3,
+      "members": [
+        {
+          "age": 50,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 48,
+          "sex": "F",
+          "relationship_to_head": "Spouse"
+        },
+        {
+          "age": 5,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        }
+      ],
+      "under_five_count": 0,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Semi-permanent",
+      "roof_material": "Iron sheets",
+      "water_source": "Open source",
+      "sanitation_facility": "Covered pit latrine with slab",
+      "cooking_fuel": "Firewood",
+      "electricity_access": false,
+      "monthly_income_ugx": 307000,
+      "primary_income_source": "Subsistence farming",
+      "nearest_facility_level": "HC II",
+      "distance_km": 4.5,
+      "llin_nets_owned": 2,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": null,
+      "anc_visits_last_pregnancy": 6,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": false
+    },
+    {
+      "household_id": "38ac7329-b9de-4974-954d-0337f1af6a6b",
+      "village_health_team_id": "VHT-WAK-013",
+      "district": "Wakiso",
+      "region": "Central",
+      "subcounty": "Gombe Division",
+      "parish": "Nsangi II",
+      "village": "Kikandwa",
+      "settlement_type": "peri-urban",
+      "head_sex": "M",
+      "head_age": 41,
+      "head_marital_status": "Divorced/Separated",
+      "head_education_level": "Completed Primary",
+      "head_occupation": "Casual labour",
+      "household_size": 5,
+      "members": [
+        {
+          "age": 41,
+          "sex": "M",
+          "relationship_to_head": "Head"
+        },
+        {
+          "age": 2,
+          "sex": "F",
+          "relationship_to_head": "Daughter"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 6,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        },
+        {
+          "age": 4,
+          "sex": "M",
+          "relationship_to_head": "Son"
+        }
+      ],
+      "under_five_count": 3,
+      "pregnant_women_count": 0,
+      "elderly_65_plus_count": 0,
+      "dwelling_type": "Permanent/Modern",
+      "roof_material": "Iron sheets",
+      "water_source": "Tap",
+      "sanitation_facility": "Flush toilet (septic tank)",
+      "cooking_fuel": "Charcoal",
+      "electricity_access": true,
+      "monthly_income_ugx": 493000,
+      "primary_income_source": "Casual labour",
+      "nearest_facility_level": "HC III",
+      "distance_km": 2.4,
+      "llin_nets_owned": 4,
+      "malaria_episode_last_3m": false,
+      "immunisation_up_to_date": true,
+      "anc_visits_last_pregnancy": null,
+      "chronic_conditions": [
+        "none"
+      ],
+      "reported_diarrhoea_last_2w": true
+    }
+  ]
+}

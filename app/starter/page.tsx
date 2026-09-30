@@ -194,7 +194,7 @@ export default function StarterPage() {
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
                                     <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        contentStyle={{ borderRadius: 0, border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                     />
                                     <Area type="monotone" dataKey="value" stroke="#004AAD" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                                 </AreaChart>

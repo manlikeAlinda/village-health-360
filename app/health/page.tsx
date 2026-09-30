@@ -1,60 +1,92 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import {
-  Activity, Baby, Syringe, HeartPulse,
-  TrendingUp, AlertCircle, Calendar, LucideIcon,
-  ArrowUpRight, ArrowDownRight, MapPin, Pill,
-  Users, Shield, ChevronDown, Filter,
-  Download, Share2, AlertTriangle,
-  Heart, Thermometer, X
+  Activity, Baby, HeartPulse, Users2,
+  AlertCircle, LucideIcon,
+  MapPin, Users,
+  ChevronDown, Filter,
+  AlertTriangle, X, Loader2,
+  Droplets, CheckCircle2, AlertOctagon, Hammer
 } from "lucide-react";
-import DemoDataBadge from "../components/ui/DemoDataBadge";
 import { getAllDistricts, getSubcounties } from "../lib/adminData";
+import { useHouseholdsStore } from "../store/householdsStore";
+import { api } from "../lib/api";
+import { INCOME_BRACKETS } from "../lib/types";
+import type { Household, Facility } from "../lib/types";
+import { classifySanitation, type SanitationClass } from "../lib/washClassification";
+
+const SANITATION_CLASSES: SanitationClass[] = ["Improved", "Unimproved", "Open Defecation", "Not Recorded"];
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell, AreaChart, Area, ComposedChart,
-  LabelList, PieChart, Pie
+  PieChart, Pie, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell,
+  Tooltip as RechartsTooltip, Legend
 } from "recharts";
 
-// --- Data Perturbation Logic ---
-const getSeedMultiplier = (seed: string) => {
-  if (!seed || seed === "National") return 1;
-  const val = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return 0.6 + ((val % 80) / 100);
-};
+// --- Real aggregation helpers ---
 
-// --- Domain Configuration ---
-const MALARIA_COLOR = "#EF4444";
-const HIV_COLOR = "#8B5CF6";
-const MATERNAL_COLOR = "#EC4899";
-
-// --- Domain Badge Component ---
-function DomainBadge({ domain }: { domain: 'maternal' | 'hiv' | 'malaria' }) {
-  const styles = {
-    maternal: "bg-pink-100 text-pink-700 border-pink-200",
-    hiv: "bg-purple-100 text-purple-700 border-purple-200",
-    malaria: "bg-red-100 text-red-700 border-red-200"
-  };
-  const labels = { maternal: "Maternal", hiv: "HIV", malaria: "Malaria" };
-  return (
-    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${styles[domain]}`}>
-      {labels[domain]}
-    </span>
-  );
+// Groups a set of free-text field values into a sorted tally, so charts show
+// what field agents actually typed rather than a fixed enum. Household health
+// data is free text (see server/src/types/index.ts), so this is the honest way
+// to summarize it without inventing categories that don't exist in the data.
+function tally(values: (string | undefined)[], emptyLabel = "Not recorded"): { name: string; value: number }[] {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    const v = raw?.trim() || emptyLabel;
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
-// --- Component System ---
+// Same idea as tally() above, shaped for the WASH bar charts (dataKey="count").
+function tallyCount(values: (string | undefined)[], emptyLabel = "Not recorded"): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    const v = raw?.trim() || emptyLabel;
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function deriveVulnerabilityFactors(h: Household): string[] {
+  const factors: string[] = [];
+  if (h.waterSource.toLowerCase().includes("unsafe")) factors.push("Unsafe Water Source");
+  if (/pregnan/i.test(h.healthStatus) || /pregnan/i.test(h.health?.maternal || "")) factors.push("Pregnant Member");
+  if (/malnutrition/i.test(h.healthStatus)) factors.push("Child Malnutrition");
+  if (/malaria/i.test(h.healthStatus)) factors.push("Active Malaria Case");
+  return factors;
+}
+
+const CHART_COLORS = ["#004AAD", "#EC4899", "#8B5CF6", "#F59E0B", "#10B981", "#EF4444", "#6366F1", "#94A3B8"];
+
+// Same heuristic used on the map dashboard (app/map/page.tsx) for consistency —
+// household water sources are free text, so "safe" is a keyword match, not an enum.
+const SAFE_WATER_KEYWORDS = ["borehole", "tap", "protected", "safe"];
+
+const FACILITY_TYPE_LABELS: Record<string, string> = {
+  borehole: "Borehole",
+  tap_stand: "Tap Stand",
+  protected_spring: "Protected Spring",
+  rain_tank: "Rain Tank",
+  health_center: "Health Center",
+  school: "School",
+  latrine: "Latrine",
+};
+
+// --- UI Components ---
+
 interface HealthStatProps {
   label: string;
   value: string;
-  trend: string;
-  trendDir: 'up' | 'down' | 'neutral';
+  subtext?: string;
   icon: LucideIcon;
   intent: 'brand' | 'warning' | 'success' | 'danger' | 'purple' | 'pink';
-  subtext?: string;
 }
 
-function HealthStat({ label, value, trend, trendDir, icon: Icon, intent, subtext }: HealthStatProps) {
+function HealthStat({ label, value, subtext, icon: Icon, intent }: HealthStatProps) {
   const styles: Record<string, string> = {
     brand: "bg-blue-50 text-blue-700 border-blue-200",
     warning: "bg-orange-50 text-orange-700 border-orange-200",
@@ -64,18 +96,10 @@ function HealthStat({ label, value, trend, trendDir, icon: Icon, intent, subtext
     pink: "bg-pink-50 text-pink-700 border-pink-200",
   };
 
-  const trendColor = trendDir === 'up' && intent !== 'warning' && intent !== 'danger' ? "text-green-600" : trendDir === 'down' ? "text-red-500" : "text-gray-500";
-  const TrendIcon = trendDir === 'up' ? ArrowUpRight : ArrowDownRight;
-
   return (
     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-      <div className="flex justify-between items-start">
-        <div className={`p-2.5 rounded-xl border ${styles[intent]}`}>
-          <Icon size={20} />
-        </div>
-        <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full bg-gray-50 ${trendColor}`}>
-          <TrendIcon size={12} /> {trend}
-        </div>
+      <div className={`p-2.5 rounded-xl border inline-flex ${styles[intent]}`}>
+        <Icon size={20} />
       </div>
       <div className="mt-4">
         <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{value}</h4>
@@ -86,7 +110,42 @@ function HealthStat({ label, value, trend, trendDir, icon: Icon, intent, subtext
   );
 }
 
-// Simple Filter Select Component
+interface WashStatProps {
+  label: string;
+  value: string;
+  subtext: string;
+  icon: LucideIcon;
+  intent: 'brand' | 'success' | 'warning' | 'danger';
+}
+
+function WashStat({ label, value, subtext, icon: Icon, intent }: WashStatProps) {
+  const theme = {
+    brand: { bg: "bg-blue-50", text: "text-blue-700", icon: "text-blue-600" },
+    success: { bg: "bg-emerald-50", text: "text-emerald-700", icon: "text-emerald-600" },
+    warning: { bg: "bg-amber-50", text: "text-amber-700", icon: "text-amber-600" },
+    danger: { bg: "bg-rose-50", text: "text-rose-700", icon: "text-rose-600" },
+  };
+  const currentTheme = theme[intent];
+
+  return (
+    <div className="relative overflow-hidden bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-300 group">
+      <div className={`p-3 rounded-xl ${currentTheme.bg} ${currentTheme.icon} inline-flex`}>
+        <Icon size={20} strokeWidth={2.5} />
+      </div>
+      <div className="mt-4">
+        <h4 className="text-2xl font-bold text-gray-900 tracking-tight">{value}</h4>
+        <p className="text-sm font-medium text-gray-500 mt-1">{label}</p>
+        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-50">
+          <span className={`text-xs font-bold ${currentTheme.text} flex items-center gap-1`}>
+            {intent === 'danger' || intent === 'warning' ? <AlertOctagon size={12} /> : <CheckCircle2 size={12} />}
+            {subtext}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) => (
   <div className="relative min-w-[200px]">
     <select
@@ -106,123 +165,210 @@ const FilterSelect = ({ value, onChange, options, placeholder, disabled }: any) 
   </div>
 );
 
-// Domain Tab Component
-const DomainTab = ({ active, label, color, onClick }: { active: boolean; label: string; color: string; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${active ? `${color} text-white shadow-sm` : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-  >
-    {label}
-  </button>
-);
+const RiskBadge = ({ level }: { level: Household["riskLevel"] }) => {
+  const styles: Record<string, string> = {
+    Critical: "bg-red-50 text-red-700 border-red-100",
+    High: "bg-orange-50 text-orange-700 border-orange-100",
+    Medium: "bg-amber-50 text-amber-700 border-amber-100",
+    Low: "bg-gray-50 text-gray-600 border-gray-100",
+  };
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${styles[level]}`}>
+      {level}
+    </span>
+  );
+};
 
-export default function PublicHealthTriage() {
+export default function HealthWashOverview() {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedSubcounty, setSelectedSubcounty] = useState<string | null>(null);
-  const [activeDomainTab, setActiveDomainTab] = useState<'malaria' | 'hiv' | 'maternal'>('malaria');
 
-  // --- Derived Data Logic ---
   const allDistricts = useMemo(() => getAllDistricts(), []);
   const subcounties = useMemo(() => getSubcounties(selectedDistrict), [selectedDistrict]);
   const currentLocation = selectedSubcounty || selectedDistrict || "National";
 
-  const seed = currentLocation;
-  const multiplier = useMemo(() => getSeedMultiplier(seed), [seed]);
+  const { households, loading: householdsLoading, fetchAll } = useHouseholdsStore();
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
 
-  // --- DOMAIN-SPECIFIC KPI DATA ---
-  const kpiData = {
-    // Malaria
-    itnCoverage: Math.min(99, Math.floor(78 * multiplier)) + "%",
-    malariaIncidence: (12.4 * multiplier).toFixed(1),
-    // HIV
-    artRetention: Math.min(99, Math.floor(92 * multiplier)) + "%",
-    viralSuppression: Math.min(99, Math.floor(88 * multiplier)) + "%",
-    // Maternal
-    skillBirthAtt: Math.min(99, Math.floor(74 * multiplier)) + "%",
-    anc4Coverage: Math.min(99, Math.floor(62 * multiplier)) + "%",
-    // Cross-cutting
-    highRiskCases: Math.floor(23 * multiplier)
-  };
+  useEffect(() => {
+    fetchAll({ district: selectedDistrict || undefined, subcounty: selectedSubcounty || undefined });
+  }, [selectedDistrict, selectedSubcounty, fetchAll]);
 
-  // --- MALARIA + HIV SURVEILLANCE DATA ---
-  const malariaHivData = useMemo(() => [
-    { month: "Jan", malaria: +(6.5 * multiplier).toFixed(1), hivPositivity: +(4.2 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-    { month: "Feb", malaria: +(5.9 * multiplier).toFixed(1), hivPositivity: +(4.0 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-    { month: "Mar", malaria: +(8.0 * multiplier).toFixed(1), hivPositivity: +(3.8 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-    { month: "Apr", malaria: +(8.1 * multiplier).toFixed(1), hivPositivity: +(4.1 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-    { month: "May", malaria: +(5.6 * multiplier).toFixed(1), hivPositivity: +(3.9 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-    { month: "Jun", malaria: +(4.0 * multiplier).toFixed(1), hivPositivity: +(3.7 * multiplier).toFixed(1), malariaThreshold: 7.5 },
-  ], [multiplier]);
+  useEffect(() => {
+    setFacilitiesLoading(true);
+    const params = selectedDistrict ? `?district=${encodeURIComponent(selectedDistrict)}` : "";
+    api.get<{ data: Facility[] }>(`/api/facilities${params}`)
+      .then(({ data }) => setFacilities(data))
+      .finally(() => setFacilitiesLoading(false));
+  }, [selectedDistrict]);
 
-  // --- PMTCT CASCADE DATA (HIV) ---
-  const pmtctData = useMemo(() => [
-    { name: "ANC HIV Testing", rate: Math.min(100, Math.floor(96 * multiplier)), fill: "#8B5CF6" },
-    { name: "HIV+ Identified", rate: Math.min(100, Math.floor(98 * multiplier)), fill: "#A78BFA" },
-    { name: "ARV Initiated", rate: Math.min(100, Math.floor(94 * multiplier)), fill: "#C4B5FD" },
-    { name: "Infant Tested", rate: Math.min(100, Math.floor(82 * multiplier)), fill: "#DDD6FE" },
-  ], [multiplier]);
+  const loading = householdsLoading || facilitiesLoading;
 
-  // --- ANC CASCADE DATA (MATERNAL) ---
-  const ancCascadeData = useMemo(() => [
-    { name: "ANC 1", rate: Math.min(100, Math.floor(97 * multiplier)), fill: "#EC4899" },
-    { name: "ANC 4+", rate: Math.min(100, Math.floor(62 * multiplier)), fill: "#F472B6" },
-    { name: "Facility Delivery", rate: Math.min(100, Math.floor(74 * multiplier)), fill: "#F9A8D4" },
-    { name: "PNC within 48h", rate: Math.min(100, Math.floor(58 * multiplier)), fill: "#FBCFE8" },
-  ], [multiplier]);
+  // --- Real aggregates, derived entirely from fetched household records ---
+  const total = households.length;
 
-  // --- DOMAIN-SPECIFIC SUPPLY CHAIN DATA ---
-  const supplyData = useMemo(() => ({
-    malaria: [
-      { item: "ACTs (Coartem)", level: Math.min(100, Math.floor(85 * multiplier)), status: multiplier > 1.1 ? "Healthy" : multiplier > 0.8 ? "Moderate" : "Critical" },
-      { item: "ITNs (Bed Nets)", level: Math.min(100, Math.floor(72 * multiplier)), status: multiplier > 1.0 ? "Healthy" : multiplier > 0.7 ? "Moderate" : "Critical" },
-      { item: "mRDTs", level: Math.min(100, Math.floor(68 * multiplier)), status: multiplier > 0.9 ? "Moderate" : "Critical" },
-    ],
-    hiv: [
-      { item: "ARVs (TLD)", level: Math.min(100, Math.floor(91 * multiplier)), status: "Healthy" },
-      { item: "HIV Test Kits", level: Math.min(100, Math.floor(78 * multiplier)), status: multiplier > 1.0 ? "Healthy" : "Moderate" },
-      { item: "Viral Load Reagents", level: Math.min(100, Math.floor(55 * multiplier)), status: multiplier > 0.9 ? "Moderate" : "Critical" },
-    ],
-    maternal: [
-      { item: "Oxytocin", level: Math.min(100, Math.floor(82 * multiplier)), status: multiplier > 1.0 ? "Healthy" : "Moderate" },
-      { item: "Magnesium Sulfate", level: Math.min(100, Math.floor(65 * multiplier)), status: multiplier > 0.9 ? "Moderate" : "Critical" },
-      { item: "Misoprostol", level: Math.min(100, Math.floor(88 * multiplier)), status: "Healthy" },
-    ]
-  }), [multiplier]);
+  const riskCounts = useMemo(() => {
+    const order: Household["riskLevel"][] = ["Low", "Medium", "High", "Critical"];
+    return order.map((level) => ({ name: level, value: households.filter((h) => h.riskLevel === level).length }));
+  }, [households]);
 
-  // --- HIGH-RISK CASES (ALL DOMAINS) ---
-  const highRiskCases = useMemo(() => [
-    { id: "MN-001", name: "Nakato Sarah", domain: "maternal" as const, riskLevel: "Critical", issue: "Pre-eclampsia, 36 weeks gestation", village: "Bukasa", action: "Refer to HC IV" },
-    { id: "HV-042", name: "Kato Moses", domain: "hiv" as const, riskLevel: "High", issue: "Unsuppressed VL (12,000 copies), 6mo on ART", village: "Ntinda", action: "Enhanced Adherence Counseling" },
-    { id: "MN-002", name: "Namuli Grace", domain: "maternal" as const, riskLevel: "High", issue: "Previous C-Section, ANC defaulter", village: "Kiwatule", action: "Home Visit Scheduled" },
-    { id: "HV-089", name: "Lwanga Peter", domain: "hiv" as const, riskLevel: "Critical", issue: "ART defaulter (45 days), PMTCT exposed infant", village: "Makindye", action: "Urgent Tracing Required" },
-    { id: "MN-003", name: "Apio Janet", domain: "maternal" as const, riskLevel: "Critical", issue: "Severe anemia (Hb 6.5), 28 weeks", village: "Banda", action: "Emergency Referral" },
-  ], []);
+  const criticalOrHigh = useMemo(() => households.filter((h) => h.riskLevel === "Critical" || h.riskLevel === "High"), [households]);
+
+  const pregnantCount = useMemo(
+    () => households.filter((h) => /pregnan/i.test(h.healthStatus) || /pregnan/i.test(h.health?.maternal || "")).length,
+    [households]
+  );
+
+  const malnourishedMembers = useMemo(
+    () => households.reduce((sum, h) => sum + (h.householdMembers?.filter((m) => m.status === "Malnourished").length || 0), 0),
+    [households]
+  );
+
+  const vulnerabilityFactorCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    households.forEach((h) => {
+      deriveVulnerabilityFactors(h).forEach((f) => counts.set(f, (counts.get(f) || 0) + 1));
+    });
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [households]);
+
+  const immunizationTally = useMemo(
+    () => tally(households.map((h) => h.health?.immunization)).slice(0, 6),
+    [households]
+  );
+
+  const chronicRecordedCount = useMemo(
+    () => households.filter((h) => h.health?.chronic && !["none", "n/a"].includes(h.health.chronic.trim().toLowerCase())).length,
+    [households]
+  );
+
+  const priorityRegistry = useMemo(
+    () => [...criticalOrHigh].sort((a, b) => (a.riskLevel === b.riskLevel ? 0 : a.riskLevel === "Critical" ? -1 : 1)).slice(0, 8),
+    [criticalOrHigh]
+  );
+
+  // --- Cross-module: WASH × Livelihoods × Health, joined on household_id ---
+  // This is the query the household-anchor architecture exists to answer —
+  // impossible when each module aggregates independently, trivial once
+  // every module reads/writes the same household record. Under-5 diarrhoea
+  // (2-week recall) is the standard survey indicator for this; sanitation
+  // is grouped by the WHO/JMP Improved/Unimproved classification (see
+  // lib/washClassification.ts), keyword-matched from the free-text field.
+  const under5DiarrhoeaByIncomeBracket = useMemo(() => {
+    const buckets = new Map<string, { under5: number; withDiarrhoea: number }>();
+    households.forEach((h) => {
+      const bracket = h.livelihoods?.incomeBracket;
+      if (!bracket) return;
+      (h.householdMembers ?? []).forEach((m) => {
+        if (m.age >= 5) return;
+        const b = buckets.get(bracket) ?? { under5: 0, withDiarrhoea: 0 };
+        b.under5 += 1;
+        if (m.diarrhoeaLast2Weeks) b.withDiarrhoea += 1;
+        buckets.set(bracket, b);
+      });
+    });
+    return INCOME_BRACKETS.map((b) => {
+      const bucket = buckets.get(b);
+      return {
+        name: b,
+        value: bucket && bucket.under5 > 0 ? Math.round((bucket.withDiarrhoea / bucket.under5) * 100) : 0,
+        under5Count: bucket?.under5 ?? 0,
+      };
+    });
+  }, [households]);
+
+  const under5DiarrhoeaBySanitation = useMemo(() => {
+    const buckets = new Map<SanitationClass, { under5: number; withDiarrhoea: number }>();
+    households.forEach((h) => {
+      const sanitationClass = classifySanitation(h.wash?.sanitation);
+      (h.householdMembers ?? []).forEach((m) => {
+        if (m.age >= 5) return;
+        const b = buckets.get(sanitationClass) ?? { under5: 0, withDiarrhoea: 0 };
+        b.under5 += 1;
+        if (m.diarrhoeaLast2Weeks) b.withDiarrhoea += 1;
+        buckets.set(sanitationClass, b);
+      });
+    });
+    return SANITATION_CLASSES.map((name) => {
+      const b = buckets.get(name);
+      return { name, value: b && b.under5 > 0 ? Math.round((b.withDiarrhoea / b.under5) * 100) : 0, under5Count: b?.under5 ?? 0 };
+    });
+  }, [households]);
+
+  const under5WithDataCount = useMemo(
+    () => under5DiarrhoeaByIncomeBracket.reduce((sum, b) => sum + b.under5Count, 0),
+    [under5DiarrhoeaByIncomeBracket]
+  );
+
+  // --- WASH aggregates ---
+  const safeWaterCount = useMemo(
+    () => households.filter((h) => {
+      const source = (h.wash?.waterSource || h.waterSource).toLowerCase();
+      return SAFE_WATER_KEYWORDS.some((kw) => source.includes(kw)) && !source.includes("unsafe");
+    }).length,
+    [households]
+  );
+  const safeWaterPct = total > 0 ? Math.round((safeWaterCount / total) * 100) : null;
+
+  const waterSourceSplit = useMemo(() => [
+    { name: "Safe (Borehole/Tap/Protected)", value: safeWaterCount, color: "#0EA5E9" },
+    { name: "Unsafe / Unclear", value: total - safeWaterCount, color: "#F43F5E" },
+  ], [safeWaterCount, total]);
+
+  const sanitationTally = useMemo(
+    () => tallyCount(households.map((h) => h.wash?.sanitation)).slice(0, 6),
+    [households]
+  );
+
+  // WHO/JMP Improved/Unimproved classification (see lib/washClassification.ts)
+  // — a keyword-matched grouping of the same free-text field above, not a
+  // second data source.
+  const sanitationClassTally = useMemo(() => {
+    const counts = new Map<SanitationClass, number>();
+    households.forEach((h) => {
+      const c = classifySanitation(h.wash?.sanitation);
+      counts.set(c, (counts.get(c) || 0) + 1);
+    });
+    return SANITATION_CLASSES.map((name) => ({ name, count: counts.get(name) || 0 }));
+  }, [households]);
+
+  const noHandwashingCount = useMemo(
+    () => households.filter((h) => {
+      const v = (h.wash?.handwashing || "").toLowerCase();
+      return v.includes("no soap") || v.includes("none");
+    }).length,
+    [households]
+  );
+
+  const facilitiesByType = useMemo(() => {
+    const types = Object.keys(FACILITY_TYPE_LABELS);
+    return types.map((type) => ({
+      name: FACILITY_TYPE_LABELS[type],
+      functional: facilities.filter((f) => f.type === type && f.status === "functional").length,
+      broken: facilities.filter((f) => f.type === type && f.status === "broken").length,
+    })).filter((row) => row.functional > 0 || row.broken > 0);
+  }, [facilities]);
+
+  const brokenFacilities = useMemo(() => facilities.filter((f) => f.status === "broken"), [facilities]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 p-6 lg:p-10 mt-16">
+    <main className="min-h-screen bg-linear-to-br from-gray-50 via-white to-blue-50/30 p-6 lg:p-10 mt-16">
       {/* 1. Executive Header */}
       <header className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
             <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">
-              Priority Health Surveillance
+              Health & WASH Overview
             </h1>
             <p className="text-sm text-gray-500 mt-1.5 max-w-xl">
-              National dashboard for <span className="font-semibold text-pink-600">Maternal Health</span>, <span className="font-semibold text-purple-600">HIV</span>, and <span className="font-semibold text-red-600">Malaria</span> programs across {currentLocation}.
+              {total} household record{total === 1 ? "" : "s"} and {facilities.length} registered facilit{facilities.length === 1 ? "y" : "ies"} in {currentLocation}. Every figure below rolls up from what field agents recorded on the household — see a household's Health / WASH tab to add or correct data.
             </p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition shadow-sm">
-              <Download size={16} /> Export Report
-            </button>
-            <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#004AAD] rounded-xl hover:bg-[#003a8c] transition shadow-sm">
-              <Share2 size={16} /> Share Dashboard
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Filter Bar */}
+      {/* Shared Filter Bar */}
       <section className="mb-8 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-gray-600">
@@ -256,233 +402,400 @@ export default function PublicHealthTriage() {
               <X size={14} /> Clear Filters
             </button>
           )}
+          {loading && <Loader2 size={16} className="animate-spin text-gray-400" />}
         </div>
       </section>
 
-      {/* 2. Domain-Specific KPI Section */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Program Indicators</span>
-        <DemoDataBadge label="Simulated — not connected to live data" />
+      {/* ===================== HEALTH ===================== */}
+      <div className="flex items-center gap-2 mb-4">
+        <HeartPulse size={20} className="text-[#004AAD]" />
+        <h2 className="text-xl font-bold text-gray-900">Health</h2>
       </div>
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <HealthStat
-          label="ITN Coverage"
-          value={kpiData.itnCoverage}
-          trend="+5% QoQ"
-          trendDir="up"
-          icon={Shield}
-          intent="danger"
-          subtext="Malaria prevention indicator"
-        />
-        <HealthStat
-          label="ART Retention (12mo)"
-          value={kpiData.artRetention}
-          trend="+2.1% YoY"
-          trendDir="up"
-          icon={Pill}
-          intent="purple"
-          subtext="HIV treatment continuity"
-        />
-        <HealthStat
-          label="Skilled Birth Attendance"
-          value={kpiData.skillBirthAtt}
-          trend="+8% vs baseline"
-          trendDir="up"
-          icon={Baby}
-          intent="pink"
-          subtext="Maternal mortality reduction proxy"
-        />
-        <HealthStat
-          label="High-Risk Cases Active"
-          value={kpiData.highRiskCases.toString()}
-          trend="3 new this week"
-          trendDir="neutral"
-          icon={AlertTriangle}
-          intent="warning"
-          subtext="Across all three domains"
-        />
-      </section>
 
-      {/* 3. Deep Dive Analytics */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+      {total === 0 && !loading ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400 mb-10">
+          No household records for {currentLocation} yet.
+        </div>
+      ) : (
+        <>
+          {/* Health KPI Section */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <HealthStat label="Households Tracked" value={total.toString()} icon={Users2} intent="brand" subtext={currentLocation} />
+            <HealthStat
+              label="Critical / High Risk"
+              value={`${criticalOrHigh.length}`}
+              icon={AlertTriangle}
+              intent="danger"
+              subtext={total > 0 ? `${Math.round((criticalOrHigh.length / total) * 100)}% of tracked households` : undefined}
+            />
+            <HealthStat label="Pregnant Members Recorded" value={pregnantCount.toString()} icon={Baby} intent="pink" subtext="From health status / maternal fields" />
+            <HealthStat label="Malnourished Members Recorded" value={malnourishedMembers.toString()} icon={HeartPulse} intent="warning" subtext="From household member roster" />
+          </section>
 
-        {/* Left Col: Surveillance (2/3 width) */}
-        <div className="xl:col-span-2 space-y-6">
-
-          {/* Chart A: Malaria & HIV Surveillance */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Activity size={20} className="text-[#004AAD]" />
-                  Malaria & HIV Surveillance
+          {/* Health Deep Dive Analytics */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+            <div className="xl:col-span-2 space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                  <Activity size={20} className="text-[#004AAD]" /> Risk Level Distribution
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">Monthly incidence rates per 1,000 population.</p>
+                <p className="text-xs text-gray-500 mb-6">Vulnerability priority assigned at registration/review, per household.</p>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={riskCounts} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                      <RechartsTooltip contentStyle={{ borderRadius: 0, border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                        {riskCounts.map((entry, i) => (
+                          <Cell key={entry.name} fill={["#94A3B8", "#F59E0B", "#F97316", "#EF4444"][i]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600"><span className="w-2 h-2 rounded-full bg-red-500"></span> Malaria</span>
-                <span className="flex items-center gap-1.5 text-xs font-medium text-gray-600"><span className="w-2 h-2 rounded-full bg-purple-500"></span> HIV Positivity</span>
+
+              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                  <AlertCircle size={20} className="text-red-500" /> Vulnerability Factors
+                </h3>
+                <p className="text-xs text-gray-500 mb-6">Households flagged for each factor (a household can carry more than one).</p>
+                {vulnerabilityFactorCounts.length > 0 ? (
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={vulnerabilityFactorCounts} layout="vertical" margin={{ left: 0, right: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                        <XAxis type="number" allowDecimals={false} hide />
+                        <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                        <RechartsTooltip cursor={{ fill: 'transparent' }} />
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22} fill="#EF4444" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No vulnerability factors detected in current records.</p>
+                )}
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+                  <HeartPulse size={20} className="text-purple-600" /> Immunization Status (as recorded)
+                </h3>
+                <p className="text-xs text-gray-500 mb-6">Free-text values entered on each household's Health tab, grouped as typed.</p>
+                <div className="h-56 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={immunizationTally} layout="vertical" margin={{ left: 0, right: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                      <XAxis type="number" allowDecimals={false} hide />
+                      <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip cursor={{ fill: 'transparent' }} />
+                      <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={20}>
+                        {immunizationTally.map((entry, i) => (
+                          <Cell key={entry.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
 
-            <div className="h-72 w-full">
+            {/* Right Col: Priority Registry */}
+            <div className="space-y-6">
+              <HealthStat label="Chronic Illness Recorded" value={chronicRecordedCount.toString()} icon={Activity} intent="purple" subtext="Households with a non-empty chronic illness entry" />
+
+              <div className="bg-white p-0 rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
+                    <Users size={16} className="text-red-600" /> Priority Household Registry
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Critical / High risk households, real records.</p>
+                </div>
+                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                  {priorityRegistry.length > 0 ? priorityRegistry.map((h) => (
+                    <Link key={h.id} href={`/households/${h.id}`} className="block p-4 hover:bg-gray-50 transition cursor-pointer">
+                      <div className="flex justify-between items-start mb-2">
+                        <RiskBadge level={h.riskLevel} />
+                        <span className="text-xs text-gray-400 font-mono">{h.id.slice(0, 8)}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-900">{h.head}</h4>
+                      <p className="text-xs text-gray-600 mb-2 font-medium">{h.healthStatus}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><MapPin size={10} /> {h.location?.village_id ?? "Not set"}</span>
+                      </div>
+                    </Link>
+                  )) : (
+                    <p className="p-4 text-sm text-gray-400 italic">No critical/high-risk households in this filter.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Cross-module: the query a siloed dashboard can't answer */}
+          <section className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm mb-10">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+              <Baby size={20} className="text-[#004AAD]" /> Under-5 Diarrhoea Prevalence — Cross-Module
+            </h3>
+            <p className="text-xs text-gray-500 mb-6">
+              Joined on household_id across Health, WASH and Livelihoods — 2-week recall, per household member under 5.
+            </p>
+            {under5WithDataCount === 0 ? (
+              <p className="text-sm text-gray-400 italic">
+                No under-5 members with recorded diarrhoea data yet — add members via a household&apos;s Health tab to populate this.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">By Income Bracket</h4>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={under5DiarrhoeaByIncomeBracket} layout="vertical" margin={{ left: 0, right: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                        <XAxis type="number" allowDecimals={false} unit="%" hide />
+                        <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 10.5, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                        <RechartsTooltip
+                          cursor={{ fill: 'transparent' }}
+                          formatter={(value, _name, item) => [`${value}% (${item.payload.under5Count} under-5 member(s))`, 'Prevalence']}
+                        />
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18} fill="#004AAD" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">By Sanitation Class (WHO/JMP)</h4>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={under5DiarrhoeaBySanitation} layout="vertical" margin={{ left: 0, right: 25 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F3F4F6" />
+                        <XAxis type="number" allowDecimals={false} unit="%" hide />
+                        <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 10.5, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
+                        <RechartsTooltip
+                          cursor={{ fill: 'transparent' }}
+                          formatter={(value, _name, item) => [`${value}% (${item.payload.under5Count} under-5 member(s))`, 'Prevalence']}
+                        />
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={18} fill="#0EA5E9" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      <hr className="my-10 border-gray-200" />
+
+      {/* ===================== WASH ===================== */}
+      <div className="flex items-center gap-2 mb-4">
+        <Droplets size={20} className="text-[#004AAD]" />
+        <h2 className="text-xl font-bold text-gray-900">WASH</h2>
+      </div>
+
+      {/* WASH KPI Section */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <WashStat
+          label="Safe Water Coverage"
+          value={safeWaterPct !== null ? `${safeWaterPct}%` : "—"}
+          subtext={`${safeWaterCount} of ${total} households`}
+          icon={CheckCircle2}
+          intent={safeWaterPct === null ? "brand" : safeWaterPct > 70 ? "success" : "warning"}
+        />
+        <WashStat
+          label="Registered Facilities"
+          value={facilities.length.toString()}
+          subtext="Boreholes, taps, latrines & more"
+          icon={Droplets}
+          intent="brand"
+        />
+        <WashStat
+          label="Broken / Down"
+          value={brokenFacilities.length.toString()}
+          subtext="Facilities needing repair"
+          icon={AlertOctagon}
+          intent={brokenFacilities.length > 0 ? "danger" : "success"}
+        />
+        <WashStat
+          label="No Handwashing Facility"
+          value={noHandwashingCount.toString()}
+          subtext="Households reporting no soap/none"
+          icon={AlertOctagon}
+          intent={noHandwashingCount > 0 ? "warning" : "success"}
+        />
+      </section>
+
+      {/* WASH Visualization Layer */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Chart A: Source Safety */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Droplets size={20} className="text-[#004AAD]" /> Household Water Source Safety
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">From each household's recorded water source.</p>
+          </div>
+          {total > 0 ? (
+            <div className="h-[300px] relative">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={malariaHivData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorMalaria" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={MALARIA_COLOR} stopOpacity={0.1} />
-                      <stop offset="95%" stopColor={MALARIA_COLOR} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <ReferenceLine y={7.5} label={{ value: "Malaria Epidemic Threshold", fill: 'red', fontSize: 10 }} stroke="red" strokeDasharray="3 3" />
-                  <Area type="monotone" dataKey="malaria" stroke={MALARIA_COLOR} strokeWidth={3} fillOpacity={1} fill="url(#colorMalaria)" name="Malaria Incidence" />
-                  <Line type="monotone" dataKey="hivPositivity" stroke={HIV_COLOR} strokeWidth={3} dot={false} name="HIV Positivity %" />
-                </ComposedChart>
+                <PieChart>
+                  <Pie data={waterSourceSplit} cx="50%" cy="50%" innerRadius={80} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
+                    {waterSourceSplit.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ borderRadius: 0, border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] text-center pointer-events-none">
+                <span className="text-4xl font-extrabold text-slate-800 block">{safeWaterPct}%</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Safe</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 italic py-16 text-center">No household records for {currentLocation} yet.</p>
+          )}
+        </div>
+
+        {/* Chart B: Sanitation types as recorded */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Droplets size={20} className="text-[#004AAD]" /> Sanitation Types (as recorded)
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">Free-text values entered on each household's WASH tab.</p>
+          </div>
+          {sanitationTally.length > 0 ? (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sanitationTally} layout="vertical" margin={{ left: 80, right: 20, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F1F5F9" />
+                  <XAxis type="number" allowDecimals={false} hide />
+                  <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 12, fontWeight: 600, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: 0, border: '1px solid #E2E8F0', boxShadow: 'none' }} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={28} fill="#0EA5E9" />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* Chart B: PMTCT & ANC Cascades */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* PMTCT Cascade */}
-              <div>
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <Shield size={20} className="text-purple-600" />
-                    PMTCT Cascade
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">Prevention of Mother-to-Child HIV Transmission</p>
-                </div>
-                <div className="h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={pmtctData} layout="vertical" margin={{ left: 0, right: 25 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />
-                      <XAxis type="number" domain={[0, 100]} hide />
-                      <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
-                      <Tooltip cursor={{ fill: 'transparent' }} />
-                      <Bar dataKey="rate" radius={[0, 6, 6, 0]} barSize={24} background={{ fill: '#F9FAFB' }}>
-                        {pmtctData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                        <LabelList dataKey="rate" position="right" formatter={(val) => `${val}%`} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#4B5563' }} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* ANC Cascade */}
-              <div>
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <Heart size={20} className="text-pink-600" />
-                    ANC Attendance Cascade
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">Maternal care continuum tracking</p>
-                </div>
-                <div className="h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ancCascadeData} layout="vertical" margin={{ left: 0, right: 25 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#F3F4F6" />
-                      <XAxis type="number" domain={[0, 100]} hide />
-                      <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11, fontWeight: 600, fill: '#374151' }} axisLine={false} tickLine={false} />
-                      <Tooltip cursor={{ fill: 'transparent' }} />
-                      <Bar dataKey="rate" radius={[0, 6, 6, 0]} barSize={24} background={{ fill: '#F9FAFB' }}>
-                        {ancCascadeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                        <LabelList dataKey="rate" position="right" formatter={(val) => `${val}%`} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#4B5563' }} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-gray-400 italic py-16 text-center">No sanitation data recorded yet.</p>
+          )}
         </div>
 
-        {/* Right Col: Supply Chain & Risk (1/3 width) */}
-        <div className="space-y-6">
-
-          {/* Domain-Specific Supply Chain Widget */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-              <Pill size={18} className="text-[#004AAD]" />
-              Commodity Stock Status
+        {/* Chart C: WHO/JMP Improved/Unimproved classification */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Droplets size={20} className="text-[#004AAD]" /> Sanitation Classification (WHO/JMP)
             </h3>
-            {/* Domain Tabs */}
-            <div className="flex gap-2 mb-4">
-              <DomainTab active={activeDomainTab === 'malaria'} label="Malaria" color="bg-red-500" onClick={() => setActiveDomainTab('malaria')} />
-              <DomainTab active={activeDomainTab === 'hiv'} label="HIV" color="bg-purple-500" onClick={() => setActiveDomainTab('hiv')} />
-              <DomainTab active={activeDomainTab === 'maternal'} label="Maternal" color="bg-pink-500" onClick={() => setActiveDomainTab('maternal')} />
-            </div>
-            <div className="space-y-4">
-              {supplyData[activeDomainTab].map((item) => (
-                <div key={item.item}>
-                  <div className="flex justify-between text-xs font-bold text-gray-700 mb-1.5">
-                    <span>{item.item}</span>
-                    <span className={item.status === "Critical" ? "text-red-600" : item.status === "Moderate" ? "text-orange-500" : "text-green-600"}>
-                      {item.status} ({item.level}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.status === "Critical" ? "bg-red-500" :
-                        item.status === "Moderate" ? "bg-orange-400" : "bg-green-500"
-                        }`}
-                      style={{ width: `${item.level}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="w-full mt-6 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200">
-              View Full Logistics Report
-            </button>
+            <p className="text-xs text-gray-500 mt-1">Same recorded values above, grouped by the Improved/Unimproved sanitation ladder.</p>
           </div>
-
-          {/* High Risk Registry - All Domains */}
-          <div className="bg-white p-0 rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-gray-100 bg-gray-50/50">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
-                <Users size={16} className="text-red-600" />
-                Priority Case Registry
-              </h3>
-            </div>
-            <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
-              {highRiskCases.map((caseItem) => (
-                <div key={caseItem.id} className="p-4 hover:bg-gray-50 transition cursor-pointer">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <DomainBadge domain={caseItem.domain} />
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase ${caseItem.riskLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-orange-50 text-orange-700 border-orange-100'
-                        }`}>
-                        {caseItem.riskLevel}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-400">{caseItem.id}</span>
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-900">{caseItem.name}</h4>
-                  <p className="text-xs text-gray-600 mb-2 font-medium">{caseItem.issue}</p>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                    <span className="flex items-center gap-1"><MapPin size={10} /> {caseItem.village}</span>
-                    <span>•</span>
-                    <span className="text-blue-600 font-bold">{caseItem.action}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sanitationClassTally} layout="vertical" margin={{ left: 80, right: 20, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#F1F5F9" />
+                <XAxis type="number" allowDecimals={false} hide />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12, fontWeight: 600, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                <RechartsTooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: 0, border: '1px solid #E2E8F0', boxShadow: 'none' }} />
+                <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={28} fill="#10B981" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-
         </div>
-      </div>
+      </section>
+
+      {/* Facility type breakdown */}
+      <section className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm mb-8">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
+          <Droplets size={20} className="text-[#004AAD]" /> Facility Status by Type
+        </h3>
+        <p className="text-xs text-gray-500 mb-6">Registered water/sanitation infrastructure, functional vs. broken.</p>
+        {facilitiesByType.length > 0 ? (
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={facilitiesByType} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6B7280' }} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                <RechartsTooltip contentStyle={{ borderRadius: 0, border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="functional" stackId="a" fill="#10B981" name="Functional" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="broken" stackId="a" fill="#EF4444" name="Broken" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic py-8 text-center">No registered facilities for {currentLocation}.</p>
+        )}
+      </section>
+
+      {/* Maintenance Queue (real broken facilities) */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-rose-100 text-rose-600 rounded-lg">
+              <Hammer size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Maintenance Queue</h3>
+              <p className="text-xs text-gray-500 font-medium">Facilities currently marked broken</p>
+            </div>
+          </div>
+        </div>
+
+        {brokenFacilities.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-gray-100">
+                  <th className="px-6 py-4">Facility</th>
+                  <th className="px-6 py-4">Location</th>
+                  <th className="px-6 py-4">Issue</th>
+                  <th className="px-6 py-4">Mechanic</th>
+                  <th className="px-6 py-4 text-right">Days Down</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {brokenFacilities.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-gray-900 text-sm">{f.name}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{FACILITY_TYPE_LABELS[f.type] || f.type}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-gray-400" /> {f.village ? `${f.village}, ` : ""}{f.district}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {f.issue ? (
+                        <span className="font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded text-xs">{f.issue}</span>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">Not recorded</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${!f.assignedMechanic ? "bg-amber-400" : "bg-blue-500"}`}></div>
+                        <span className="text-sm font-medium text-gray-700">{f.assignedMechanic || "Unassigned"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-bold text-gray-700">
+                      {f.daysDown ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="p-8 text-sm text-gray-400 italic text-center">No broken facilities in {currentLocation}.</p>
+        )}
+      </section>
     </main>
   );
 }

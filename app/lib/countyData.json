@@ -1,0 +1,422 @@
+{
+  "Abim": [
+    "Labwor County"
+  ],
+  "Adjumani": [
+    "East Moyo County"
+  ],
+  "Agago": [
+    "Agago County"
+  ],
+  "Alebtong": [
+    "Ajuri County"
+  ],
+  "Amolatar": [
+    "Kioga County"
+  ],
+  "Amudat": [
+    "Upe County"
+  ],
+  "Amuria": [
+    "Amuria County",
+    "Kapelebyong County"
+  ],
+  "Amuru": [
+    "Kilak County"
+  ],
+  "Apac": [
+    "Kwania County",
+    "Maruzi County"
+  ],
+  "Arua City": [
+    "Arua Municipal Council"
+  ],
+  "Arua": [
+    "Ayivu County",
+    "Madi-Okollo County",
+    "Terego County",
+    "Vurra County"
+  ],
+  "Budaka": [
+    "Budaka County",
+    "Iki-Iki County",
+    "Manjiya County"
+  ],
+  "Bugiri": [
+    "Bukooli County"
+  ],
+  "Buhweju": [
+    "Buhweju County"
+  ],
+  "Buikwe": [
+    "Buikwe County"
+  ],
+  "Bukedea": [
+    "Bukedea County"
+  ],
+  "Bukomansimbi": [
+    "Bukomansimbi County"
+  ],
+  "Bukwo": [
+    "Kongasis County"
+  ],
+  "Bulambuli": [
+    "Bulambuli County"
+  ],
+  "Buliisa": [
+    "Buliisa County"
+  ],
+  "Bundibugyo": [
+    "Bughendera County",
+    "Bwamba County"
+  ],
+  "Bushenyi": [
+    "Bushenyi-Ishaka Municipal Council",
+    "Igara County"
+  ],
+  "Busia": [
+    "Busia Municipal Council",
+    "Samia-Bugwe County"
+  ],
+  "Butaleja": [
+    "Bunyole County"
+  ],
+  "Butambala": [
+    "Butambala County"
+  ],
+  "Buvuma": [
+    "Buvuma Islands County"
+  ],
+  "Buyende": [
+    "Budiope East County",
+    "Budiope West County"
+  ],
+  "Dokolo": [
+    "Dokolo County"
+  ],
+  "Gomba": [
+    "Gomba County"
+  ],
+  "Gulu City": [
+    "Gulu Municipal Council"
+  ],
+  "Gulu": [
+    "Aswa County",
+    "Omoro County"
+  ],
+  "Hoima City": [
+    "Hoima Municipal Council"
+  ],
+  "Hoima": [
+    "Bugahya County",
+    "Buhaguzi County"
+  ],
+  "Ibanda": [
+    "Ibanda County"
+  ],
+  "Iganga": [
+    "Bugweri County",
+    "Iganga Municipal Council",
+    "Kigulu County"
+  ],
+  "Isingiro": [
+    "Bukanga County",
+    "Isingiro County"
+  ],
+  "Jinja City": [
+    "Jinja Municipal Council"
+  ],
+  "Jinja": [
+    "Butembe County"
+  ],
+  "Kaabong": [
+    "Dodoth East County",
+    "Dodoth West County",
+    "Ik County"
+  ],
+  "Kabale": [
+    "Kabale Municipal Council",
+    "Ndorwa County",
+    "Rubanda County",
+    "Rukiga County"
+  ],
+  "Kabarole": [
+    "Bunyangabu County",
+    "Burahya County",
+    "Fort Portal Municipal Council"
+  ],
+  "Kaberamaido": [
+    "Kaberamaido County"
+  ],
+  "Kalangala": [
+    "Kalaki County",
+    "Bujumba County",
+    "Kyamuswa County"
+  ],
+  "Kaliro": [
+    "Bulamogi County"
+  ],
+  "Kalungu": [
+    "Kalungu County"
+  ],
+  "Kampala City": [
+    "Kampala Capital City"
+  ],
+  "Kamuli": [
+    "Bugabula County",
+    "Buzaaya County"
+  ],
+  "Kamwenge": [
+    "Kibale County",
+    "Kitagwenda County"
+  ],
+  "Kanungu": [
+    "Kinkiizi County",
+    "Tingey County"
+  ],
+  "Kasese": [
+    "Bukonzo County",
+    "Busongora County",
+    "Kasese Municipal Council"
+  ],
+  "Katakwi": [
+    "Katakwi County",
+    "Usuk County"
+  ],
+  "Kayunga": [
+    "Bbaale County",
+    "Ntenjeru County"
+  ],
+  "Kibaale": [
+    "Bugangaizi County",
+    "Buyaga County",
+    "Buyanja County"
+  ],
+  "Kiboga": [
+    "Kiboga East County",
+    "Kiboga West County"
+  ],
+  "Kibuku": [
+    "Kibuku County"
+  ],
+  "Kiruhura": [
+    "Kazo County",
+    "Nyabushozi County"
+  ],
+  "Kiryandongo": [
+    "Kibanda County"
+  ],
+  "Kisoro": [
+    "Bufumbira County East",
+    "Bufumbira County North",
+    "Bufumbira County South"
+  ],
+  "Kitgum": [
+    "Chua County"
+  ],
+  "Koboko": [
+    "Koboko County"
+  ],
+  "Kole": [
+    "Kole County"
+  ],
+  "Kotido": [
+    "Jie County"
+  ],
+  "Kumi": [
+    "Kumi County"
+  ],
+  "Kween": [
+    "Kween County"
+  ],
+  "Kyegegwa": [
+    "Kyaka County"
+  ],
+  "Kyenjojo": [
+    "Mwenge County"
+  ],
+  "Lamwo": [
+    "Lamwo County"
+  ],
+  "Lira City": [
+    "Lira Municipal Council"
+  ],
+  "Lira": [
+    "Erute County"
+  ],
+  "Luuka": [
+    "Luuka County"
+  ],
+  "Luweero": [
+    "Bamunanika County",
+    "Katikamu County",
+    "Bukoto County"
+  ],
+  "Lwengo": [
+    "Kabula County"
+  ],
+  "Lyantonde": [
+    "Bubulo County"
+  ],
+  "Maracha": [
+    "Maracha County"
+  ],
+  "Masaka City": [
+    "Masaka Municipal Council"
+  ],
+  "Masaka": [
+    "Bukoto Central County",
+    "Bukoto East County"
+  ],
+  "Masindi": [
+    "Bujenje County",
+    "Buruuli County",
+    "Masindi Municipal Council"
+  ],
+  "Mayuge": [
+    "Bunya County"
+  ],
+  "Mbale City": [
+    "Mbale Municipal Council"
+  ],
+  "Mbale": [
+    "Bungokho County"
+  ],
+  "Mbarara City": [
+    "Mbarara Municipal Council"
+  ],
+  "Mbarara": [
+    "Kashari County",
+    "Rwampara County",
+    "Ruhinda County"
+  ],
+  "Mityana": [
+    "Busujju County",
+    "Mityana County"
+  ],
+  "Moroto": [
+    "Matheniko County",
+    "Moroto County",
+    "Moroto Municipal Council"
+  ],
+  "Moyo": [
+    "Obongi County",
+    "West Moyo County"
+  ],
+  "Mpigi": [
+    "Mawokota County",
+    "Buwekula County"
+  ],
+  "Mubende": [
+    "Kasambya County",
+    "Kassanda County"
+  ],
+  "Mukono": [
+    "Mukono County",
+    "Mukono Municipal Council",
+    "Nakifuma County"
+  ],
+  "Nakapiripirit": [
+    "Chekwii (Kadam) County",
+    "Pian County"
+  ],
+  "Nakaseke": [
+    "Nakaseke North County",
+    "Nakaseke South County"
+  ],
+  "Nakasongola": [
+    "Budyebo County",
+    "Nakasongola County"
+  ],
+  "Namayingo": [
+    "Bukooli Island County",
+    "Bukooli South County"
+  ],
+  "Namutumba": [
+    "Busiki County"
+  ],
+  "Napak": [
+    "Bokora County"
+  ],
+  "Nebbi": [
+    "Jonam County",
+    "Padyere County"
+  ],
+  "Ngora": [
+    "Ngora County"
+  ],
+  "Ntoroko": [
+    "Ntoroko County"
+  ],
+  "Ntungamo": [
+    "Kajara County",
+    "Ntungamo Municipal Council",
+    "Ruhaama County",
+    "Rushenyi County"
+  ],
+  "Nwoya": [
+    "Nwoya County"
+  ],
+  "Otuke": [
+    "Otuke County"
+  ],
+  "Oyam": [
+    "Oyam County"
+  ],
+  "Pader": [
+    "Aruu County",
+    "Agule County"
+  ],
+  "Pallisa": [
+    "Butebo County",
+    "Pallisa County"
+  ],
+  "Rakai": [
+    "Kakuuto County",
+    "Kooki County",
+    "Kyotera County"
+  ],
+  "Rubirizi": [
+    "Bunyaruguru County",
+    "Katerera County",
+    "Rubabo County"
+  ],
+  "Rukungiri": [
+    "Rujumbura County",
+    "Rukungiri Municipal Council"
+  ],
+  "Sembabule": [
+    "Lwemiyaga County",
+    "Mawogola County"
+  ],
+  "Serere": [
+    "Kasilo County",
+    "Serere County"
+  ],
+  "Sheema": [
+    "Sheema County"
+  ],
+  "Sironko": [
+    "Budadiri County"
+  ],
+  "Soroti City": [
+    "Soroti Municipal Council"
+  ],
+  "Soroti": [
+    "Soroti County"
+  ],
+  "Tororo": [
+    "Tororo County",
+    "Tororo Municipal Council",
+    "West Budama County"
+  ],
+  "Wakiso": [
+    "Busiro County",
+    "Entebbe Municipal Council",
+    "Kyadondo County"
+  ],
+  "Yumbe": [
+    "Aringa County",
+    "Okoro County"
+  ]
+}

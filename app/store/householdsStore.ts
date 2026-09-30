@@ -17,12 +17,18 @@ import {
 } from "../lib/offlineDb";
 import { flushSyncQueue, onSyncStateChange } from "../lib/syncEngine";
 
+export type HouseholdSortField = "head" | "createdAt" | "riskLevel" | "reviewStatus";
+
 interface HouseholdFilters {
   district?: string;
   subcounty?: string;
   riskLevel?: string;
   search?: string;
   reviewStatus?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: HouseholdSortField;
+  sortDir?: "asc" | "desc";
 }
 
 interface HouseholdsState {
@@ -32,6 +38,12 @@ interface HouseholdsState {
   offline: boolean;
   pendingIds: Set<string>;
   conflicts: ConflictRecord[];
+  // Only meaningful when the last fetchAll() call passed page/pageSize —
+  // undefined otherwise (unpaginated callers, e.g. the dashboards, get the
+  // full matching set and have no page concept).
+  total: number | null;
+  page: number | null;
+  pageSize: number | null;
   fetchAll: (filters?: HouseholdFilters) => Promise<void>;
   fetchOne: (id: string) => Promise<Household | null>;
   create: (input: HouseholdInput) => Promise<Household>;
@@ -43,7 +55,11 @@ interface HouseholdsState {
   resolveConflict: (id: string, resolution: "keep-local" | "keep-server") => Promise<void>;
 }
 
-function buildQuery(filters?: HouseholdFilters): string {
+// Exported so callers that need a scope-wide aggregate (not the paginated
+// page the store itself renders) can query the same filters directly via
+// `api.get` without going through fetchAll and overwriting the store's
+// paginated `households` state — see the Households list page's KPI cards.
+export function buildQuery(filters?: HouseholdFilters): string {
   if (!filters) return "";
   const params = new URLSearchParams();
   if (filters.district) params.set("district", filters.district);
@@ -51,6 +67,10 @@ function buildQuery(filters?: HouseholdFilters): string {
   if (filters.riskLevel && filters.riskLevel !== "All") params.set("riskLevel", filters.riskLevel);
   if (filters.search) params.set("search", filters.search);
   if (filters.reviewStatus && filters.reviewStatus !== "All") params.set("reviewStatus", filters.reviewStatus);
+  if (filters.page !== undefined) params.set("page", String(filters.page));
+  if (filters.pageSize !== undefined) params.set("pageSize", String(filters.pageSize));
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortDir) params.set("sortDir", filters.sortDir);
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
@@ -84,6 +104,9 @@ export const useHouseholdsStore = create<HouseholdsState>((set, get) => {
     offline: typeof navigator !== "undefined" ? !navigator.onLine : false,
     pendingIds: new Set(),
     conflicts: [],
+    total: null,
+    page: null,
+    pageSize: null,
 
     refreshOfflineState: async () => {
       const [mutations, conflicts] = await Promise.all([getPendingMutations(), getConflicts()]);
@@ -93,14 +116,26 @@ export const useHouseholdsStore = create<HouseholdsState>((set, get) => {
     fetchAll: async (filters) => {
       set({ loading: true, error: null });
       try {
-        const { data } = await api.get<{ data: Household[] }>(`/api/households${buildQuery(filters)}`);
-        set({ households: data, loading: false, offline: false });
+        const paginated = filters?.page !== undefined && filters?.pageSize !== undefined;
+        const { data, total, page, pageSize } = await api.get<{ data: Household[]; total: number; page?: number; pageSize?: number }>(
+          `/api/households${buildQuery(filters)}`
+        );
+        set({
+          households: data,
+          loading: false,
+          offline: false,
+          total,
+          page: paginated ? page ?? null : null,
+          pageSize: paginated ? pageSize ?? null : null,
+        });
         await cacheHouseholds(data);
       } catch (err) {
         if (isNetworkError(err)) {
           // Offline (or the API is unreachable) — fall back to the last-known cache.
+          // The cache has no concept of server-side pages, so pagination state
+          // is cleared rather than shown as stale/wrong.
           const cached = await getCachedHouseholds();
-          set({ households: cached, loading: false, offline: true, error: null });
+          set({ households: cached, loading: false, offline: true, error: null, total: cached.length, page: null, pageSize: null });
         } else {
           set({ error: (err as Error).message, loading: false });
         }

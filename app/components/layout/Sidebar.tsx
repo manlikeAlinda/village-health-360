@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLayout } from "../providers/LayoutProvider";
 import { useAuth } from "../providers/AuthProvider";
 import {
-  LayoutDashboard, Map as MapIcon, Users, Stethoscope, Droplets,
+  LayoutDashboard, Map as MapIcon, Users, Stethoscope,
   Wallet, FileText, Settings, ChevronRight, X, ShieldCheck, LogOut,
   ChevronDown, HelpCircle, Bell, Moon, Sun, Sparkles, Home,
   Activity, BarChart3, Building2, UserCog, ClipboardList, FolderKanban,
@@ -66,20 +66,10 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     items: [
       {
-        name: "Health",
+        name: "Health & WASH",
         icon: Stethoscope,
         path: "/health",
-        badge: "3",
-        badgeColor: "bg-blue-500",
-        description: "Immunization, maternal care, disease surveillance"
-      },
-      {
-        name: "WASH",
-        icon: Droplets,
-        path: "/wash",
-        badge: "!",
-        badgeColor: "bg-amber-500",
-        description: "Water, sanitation, and hygiene infrastructure"
+        description: "Immunization, maternal care, disease surveillance, water & sanitation infrastructure"
       },
       {
         name: "Livelihoods",

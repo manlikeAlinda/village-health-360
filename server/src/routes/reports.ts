@@ -5,6 +5,7 @@ import { db } from "../lib/firebase";
 import { ApiError } from "../middleware/errorHandler";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
 import { writeAuditLog } from "../lib/auditLog";
+import { slugify } from "../lib/slugify";
 import {
   generateHealthStatusReport,
   generateWashAuditReport,
@@ -62,8 +63,8 @@ function periodRange(period: PeriodId, startDate?: string, endDate?: string): { 
 // (canonical) household records, never still-pending field submissions.
 async function fetchHouseholds(district?: string, subcounty?: string): Promise<Household[]> {
   let query: FirebaseFirestore.Query = db.collection("households").where("reviewStatus", "==", "approved");
-  if (district) query = query.where("district", "==", district);
-  if (subcounty) query = query.where("subcounty", "==", subcounty);
+  if (district) query = query.where("location.district_id", "==", slugify(district));
+  if (subcounty) query = query.where("location.subcounty_id", "==", slugify(subcounty));
   const snapshot = await query.get();
   return snapshot.docs.map((doc) => doc.data() as Household);
 }
