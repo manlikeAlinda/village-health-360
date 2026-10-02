@@ -6,3 +6,7 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebase/
+
+# Firebase service account keys — never belong in the repo.
+*firebase-adminsdk*.json
+serviceAccountKey.json
